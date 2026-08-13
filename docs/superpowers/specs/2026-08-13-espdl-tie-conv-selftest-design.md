@@ -49,6 +49,16 @@ serial record containing:
 - Flash-filter TIE output;
 - a classification code.
 
+The board's NuttX application `stderr` is not routed to the available USB CDC
+console, and USB-JTAG memory inspection is unavailable in the development
+environment. The diagnostic therefore also exposes a read-only result query.
+The existing vision diagnostics bridge carries two pass bits to the existing
+LCD footer, which appends `K:xy` to the model timing line. `x` is the RAM-filter
+pass bit and `y` is the Flash-filter pass bit. Before a result is available the
+footer shows `K:--`; after the one-shot run it shows exactly one of `K:10`,
+`K:00`, `K:11`, or `K:01`. This does not change the camera viewport, inference
+schedule, detector thresholds, or face result.
+
 ## Classification
 
 The result is classified deterministically:
@@ -64,10 +74,11 @@ The result is classified deterministically:
 ## Isolation and Failure Handling
 
 The self-test is compiled as a small AgentGuard diagnostic unit with one public
-function called from ESP-DL initialization. It owns no long-lived heap memory,
-does not modify model tensors, and does not update LCD state. All buffers use
-static aligned storage so stack size and allocation failure cannot affect the
-result.
+function called from ESP-DL initialization and one read-only status query. It
+owns no long-lived heap memory and does not modify model tensors. All buffers
+use static aligned storage so stack size and allocation failure cannot affect
+the result. LCD rendering remains outside the self-test module and consumes
+only the queried pass bits through the existing model diagnostics path.
 
 If required kernel symbols or ABI assumptions are unavailable, the build must
 fail rather than silently skip the test. A mismatch is diagnostic evidence,
@@ -76,15 +87,16 @@ camera and LCD behavior remain observable.
 
 ## Verification
 
-Host-side tests validate the scalar fixture, classification table, and exact
-one-shot behavior without executing Xtensa instructions. Target verification
-then consists of:
+Host-side tests validate the scalar fixture, classification table, exact
+one-shot behavior, unavailable-state handling, and LCD `K:xy` formatting
+without executing Xtensa instructions. Target verification then consists of:
 
 1. building with both ordinary and depthwise TIE convolution enabled;
 2. confirming the self-test object and TIE symbol are linked;
 3. flashing the board;
 4. resetting and capturing the startup serial record automatically;
-5. confirming the application continues to the normal camera/LCD loop.
+5. confirming the application continues to the normal camera/LCD loop;
+6. reading the single `K:xy` result from the LCD.
 
 No runtime fix will be implemented until this evidence identifies the failing
 boundary.
