@@ -29,6 +29,8 @@ const char *ag_tie_selftest_classification_name(
   enum ag_tie_selftest_classification value);
 bool ag_tie_selftest_claim(bool *already_ran);
 void ag_espdl_tie_conv_selftest_run_once(void);
+bool ag_espdl_tie_conv_selftest_get_result(bool *ram_pass,
+                                           bool *flash_pass);
 
 #ifdef __cplusplus
 }

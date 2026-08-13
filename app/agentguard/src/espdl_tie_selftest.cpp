@@ -39,6 +39,9 @@ alignas(16) constexpr TieFilter kFlashFilter = make_ones_filter();
 alignas(16) int8_t kRamOutput[kTieLaneCount];
 alignas(16) int8_t kFlashOutput[kTieLaneCount];
 bool g_selftest_already_ran;
+bool g_result_valid;
+bool g_ram_pass;
+bool g_flash_pass;
 
 static_assert(sizeof(void *) == 4);
 static_assert(offsetof(dl::base::ArgsType<int8_t>, input_element) == 0);
@@ -115,6 +118,10 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
   enum ag_tie_selftest_classification classification =
     ag_tie_selftest_classify(ram_pass, flash_pass);
 
+  g_ram_pass = ram_pass;
+  g_flash_pass = flash_pass;
+  g_result_valid = true;
+
   std::fprintf(stderr,
                "agentguard: TIE_SELFTEST in=%p ram_filter=%p "
                "flash_filter=%p args=%p ram_out=%p flash_out=%p expected=%d "
@@ -131,4 +138,17 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
   print_vector(kFlashOutput);
   std::fprintf(stderr, " result=%s\n",
                ag_tie_selftest_classification_name(classification));
+}
+
+extern "C" bool
+ag_espdl_tie_conv_selftest_get_result(bool *ram_pass, bool *flash_pass)
+{
+  if (!g_result_valid || ram_pass == nullptr || flash_pass == nullptr)
+    {
+      return false;
+    }
+
+  *ram_pass = g_ram_pass;
+  *flash_pass = g_flash_pass;
+  return true;
 }

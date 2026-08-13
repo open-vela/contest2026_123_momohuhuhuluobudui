@@ -237,3 +237,81 @@ Map the record to exactly one design classification:
 Run: `git status --short` and `git diff --check`.
 
 Expected: no whitespace errors; unrelated pre-existing workspace changes remain untouched.
+
+---
+
+### Task 4: LCD Diagnostic Result Channel
+
+**Files:**
+- Modify: `app/agentguard/include/agentguard/espdl_tie_selftest.h`
+- Modify: `app/agentguard/src/espdl_tie_selftest.cpp`
+- Modify: `app/agentguard/include/agentguard/vision_model.h`
+- Modify: `app/agentguard/src/vision_espdl.cpp`
+- Modify: `app/agentguard/include/agentguard/display_ui.h`
+- Modify: `app/agentguard/src/display_ui.c`
+- Modify: `app/agentguard/src/agentguard_main.c`
+- Test: `app/agentguard/tests/test_display_ui.c`
+
+**Interfaces:**
+- Produces: `bool ag_espdl_tie_conv_selftest_get_result(bool *ram_pass, bool *flash_pass)`, returning `false` before the run and otherwise writing both pass bits.
+- Extends: `ag_vision_model_diagnostics` and `ag_ui_status` with `tie_selftest_valid`, `tie_ram_pass`, and `tie_flash_pass` byte/boolean fields.
+- Extends: `ag_ui_format_model_diagnostics(...)` with the three TIE status arguments; output is `M:<count> AI:<ms> K:--` or `M:<count> AI:<ms> K:<ram><flash>`.
+
+- [ ] **Step 1: Write failing LCD formatting tests**
+
+Update `test_display_ui.c` to call the extended formatter and assert the
+hand-derived strings `M:3 AI:847 K:--`, `M:3 AI:847 K:10`, and
+`M:99+ AI:9999+ K:11`. The production changes caught are missing unavailable
+state, swapped RAM/Flash bits, and loss of existing numeric clamping.
+
+- [ ] **Step 2: Run the display test and verify RED**
+
+Run: `make -C app/agentguard/tests test_display_ui`
+
+Expected: compilation fails because the formatter does not accept the TIE
+status arguments.
+
+- [ ] **Step 3: Implement minimal LCD formatting and data fields**
+
+Increase the footer buffer to hold the longest string. Extend the formatter
+signature and append `K:--` when invalid, otherwise append the two pass bits in
+RAM-then-Flash order. Add the three fields to the model and UI diagnostics
+structures, copy them in `agentguard_main.c`, and pass them from the renderer.
+
+- [ ] **Step 4: Verify display GREEN and full host suite**
+
+Run: `make -C app/agentguard/tests clean test`
+
+Expected: all eight host tests pass.
+
+- [ ] **Step 5: Wire the result query and verify target RED**
+
+Declare the query in the self-test header. Call it from `vision_espdl.cpp`
+immediately after the one-shot run and copy its result into `g_diagnostics`.
+Do not implement the query yet.
+
+Run: `source /home/yhx/Desktop/openvela/myenv/bin/activate && make -C /home/yhx/Desktop/openvela/nuttx -j8`
+
+Expected: final link fails with an undefined
+`ag_espdl_tie_conv_selftest_get_result`, proving the target path consumes the
+new result.
+
+- [ ] **Step 6: Implement the query and verify target GREEN**
+
+Store `result_valid`, `ram_pass`, and `flash_pass` only after both TIE calls
+and comparisons finish. The query rejects null output pointers and returns
+`false` until `result_valid`; otherwise it copies both stored bits and returns
+`true`.
+
+Run the complete host suite and NuttX build again. Expected: both pass.
+
+- [ ] **Step 7: Commit and flash**
+
+Commit only the Task 4 files with message
+`feat: display TIE self-test result`, calculate the new firmware SHA-256, and
+flash it through `/dev/ttyACM0`. Expected: flash hash verification succeeds.
+
+- [ ] **Step 8: Obtain the single physical result**
+
+Ask the user to report the LCD `K:` value once. Interpret it with the design
+classification table; do not apply a runtime fix in this task.

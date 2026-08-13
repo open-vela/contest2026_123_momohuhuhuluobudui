@@ -1,0 +1,62 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+#ifndef AGENTGUARD_DISPLAY_UI_H
+#define AGENTGUARD_DISPLAY_UI_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+struct ag_ui_status
+{
+  uint64_t seated_ms;
+  uint32_t frame_sequence;
+  uint8_t face_count;
+  uint8_t posture_score;
+  uint8_t camera_phase;
+  uint8_t msr_candidates;
+  int16_t model_input_min;
+  int16_t model_input_max;
+  uint8_t msr_score_percent;
+  uint8_t pixel_mode_scores[4];
+  uint8_t reference_score_percent;
+  uint8_t reference_face_count;
+  bool tie_selftest_valid;
+  bool tie_ram_pass;
+  bool tie_flash_pass;
+  uint32_t inference_ms;
+  bool model_diagnostics_valid;
+  bool calibrated;
+  bool reminders_paused;
+  bool privacy_enabled;
+  bool sedentary_alerted;
+  bool posture_alerted;
+  bool awaiting_ack;
+  bool activity_on;
+  bool camera_stale;
+};
+
+void ag_ui_format_model_diagnostics(char *buffer, size_t buffer_size,
+                                    uint8_t msr_candidates,
+                                    uint32_t inference_ms,
+                                    bool tie_selftest_valid,
+                                    bool tie_ram_pass,
+                                    bool tie_flash_pass);
+void ag_ui_format_model_signal(char *buffer, size_t buffer_size,
+                               int16_t input_min, int16_t input_max,
+                               uint8_t score_percent);
+void ag_ui_format_pixel_mode_scores(char *buffer, size_t buffer_size,
+                                    const uint8_t scores[4]);
+void ag_ui_format_reference_result(char *buffer, size_t buffer_size,
+                                   uint8_t reference_score_percent,
+                                   uint8_t reference_face_count,
+                                   uint8_t live_score_percent);
+uint16_t ag_ui_face_color(const struct ag_ui_status *status);
+void ag_ui_rotate_180_rgb565(uint16_t *pixels, uint16_t width,
+                             uint16_t height);
+void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
+                         uint16_t frame_height, uint16_t view_width,
+                         uint16_t view_height,
+                         const struct ag_ui_status *status);
+
+#endif
