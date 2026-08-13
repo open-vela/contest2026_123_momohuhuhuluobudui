@@ -315,3 +315,73 @@ flash it through `/dev/ttyACM0`. Expected: flash hash verification succeeds.
 
 Ask the user to report the LCD `K:` value once. Interpret it with the design
 classification table; do not apply a runtime fix in this task.
+
+---
+
+### Task 5: Decouple Self-Test From Camera Frames
+
+**Files:**
+- Modify: `app/agentguard/include/agentguard/display_ui.h`
+- Modify: `app/agentguard/src/display_ui.c`
+- Modify: `app/agentguard/src/agentguard_main.c`
+- Modify: `app/agentguard/src/vision_espdl.cpp`
+- Test: `app/agentguard/tests/test_display_ui.c`
+
+**Interfaces:**
+- Produces: `ag_ui_format_camera_phase(char *buffer, size_t size, uint8_t phase)` with exact output `CAM:<phase>`.
+- Produces: `ag_ui_format_tie_selftest(char *buffer, size_t size, bool valid, bool ram_pass, bool flash_pass)` with exact output `K:--` or `K:<ram><flash>`.
+- Consumes: existing `ag_espdl_tie_conv_selftest_run_once()` and `ag_espdl_tie_conv_selftest_get_result()` directly from the application/display worker, independent of model inference.
+
+- [ ] **Step 1: Write failing stable-display tests**
+
+Extend `test_display_ui.c` with literal assertions for `CAM:21`, `CAM:28`,
+`K:--`, `K:10`, and `K:01`. These tests catch restoration of changing text
+labels, reversed pass bits, and loss of the unavailable state.
+
+- [ ] **Step 2: Run the display test and verify RED**
+
+Run: `make -C app/agentguard/tests test_display_ui`
+
+Expected: compilation fails because the two formatting functions do not exist.
+
+- [ ] **Step 3: Implement stable camera and standalone K formatting**
+
+Add both public formatters. In `ag_ui_primary_status()`, format camera errors
+into caller-owned storage as `CAM:<phase>` instead of returning changing phase
+labels. On the no-model-diagnostics footer path, render standalone `K:xy`
+instead of the seated-time string whenever the self-test is valid.
+
+- [ ] **Step 4: Verify display GREEN and full host suite**
+
+Run: `make -C app/agentguard/tests clean test`
+
+Expected: all eight host tests pass.
+
+- [ ] **Step 5: Move execution to startup and publish from display worker**
+
+Under `CONFIG_AGENTGUARD_ESP_DL`, call
+`ag_espdl_tie_conv_selftest_run_once()` in `ag_run()` immediately after the LCD
+worker starts and before I2C/camera setup. In each display-worker iteration,
+call the result query and update its local `status.tie_*` fields. Remove the
+run-once call from `vision_espdl.cpp`; keep its result query so normal model
+diagnostics also carry the same bits after frames resume.
+
+- [ ] **Step 6: Build and inspect target wiring**
+
+Run the complete host suite and NuttX build. Use `nm`/`objdump` to confirm the
+self-test call is reachable from `ag_run`, and the query is referenced by both
+the display worker and vision bridge. Expected: successful image generation,
+with the RAM and Flash fixtures still mapped to `0x3fc...` and `0x3c...`.
+
+- [ ] **Step 7: Commit, hash, flash, and software-reset verify**
+
+Commit only Task 5 files and the plan with message
+`fix: decouple TIE diagnostic from camera`. Calculate the firmware SHA-256,
+flash via `/dev/ttyACM0`, verify the written hash, and automatically reset once.
+Confirm boot reaches normal NuttX execution without panic or a reboot loop.
+
+- [ ] **Step 8: Await physical readout only after all automation is complete**
+
+Ask for exactly two values: `K:xy` and `CAM:<phase>`. No other physical action
+is needed unless the board does not display either value after the verified
+flash.
