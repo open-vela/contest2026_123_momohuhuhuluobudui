@@ -5,7 +5,8 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 
 ROOT := ..
 TARGETS := test_core test_vision test_storage test_display_ui \
-	test_espdl_backend_config test_espdl_alloc_policy
+	test_espdl_backend_config test_espdl_alloc_policy \
+	test_espdl_private_pool
 
 .PHONY: all test clean
 all: $(TARGETS)
@@ -37,6 +38,14 @@ test_espdl_alloc_policy: test_espdl_alloc_policy.c \
 	$(ROOT)/compat/espdl/esp_heap_caps.h
 	$(CC) $(CFLAGS) -I$(ROOT)/compat/espdl $< -o $@
 
+test_espdl_private_pool: test_espdl_private_pool.cpp \
+	$(ROOT)/src/espdl_private_pool.cpp \
+	$(ROOT)/compat/espdl/espdl_private_pool.h \
+	fakes/nuttx/mm/mm.h
+	$(CXX) $(CXXFLAGS) -Ifakes -I$(ROOT)/compat/espdl \
+		test_espdl_private_pool.cpp $(ROOT)/src/espdl_private_pool.cpp \
+		-pthread -o $@
+
 test: $(TARGETS)
 	./test_core
 	./test_vision
@@ -44,6 +53,7 @@ test: $(TARGETS)
 	./test_display_ui
 	./test_espdl_backend_config
 	./test_espdl_alloc_policy
+	./test_espdl_private_pool
 
 clean:
 	$(RM) $(TARGETS)
