@@ -41,7 +41,8 @@ CXXFLAGS += -Iinclude -std=gnu++20 -O3 -ffast-math \
   -Wno-overloaded-virtual -Wno-format
 
 CXXSRCS += src/vision_espdl.cpp src/espdl_compat.cpp \
-  src/espdl_private_pool.cpp
+  src/espdl_private_pool.cpp src/espdl_tie_selftest_logic.cpp \
+  src/espdl_tie_selftest.cpp
 CXXSRCS += $(filter-out $(ESPDL)/dl/tool/src/dl_tool_cache.cpp,\
   $(wildcard $(ESPDL)/dl/tool/src/*.cpp))
 CXXSRCS += $(wildcard $(ESPDL)/dl/tensor/src/*.cpp)
