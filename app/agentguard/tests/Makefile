@@ -6,7 +6,7 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 ROOT := ..
 TARGETS := test_core test_vision test_storage test_display_ui \
 	test_espdl_backend_config test_espdl_alloc_policy \
-	test_espdl_private_pool
+	test_espdl_private_pool test_espdl_tie_selftest
 
 .PHONY: all test clean
 all: $(TARGETS)
@@ -46,6 +46,13 @@ test_espdl_private_pool: test_espdl_private_pool.cpp \
 		test_espdl_private_pool.cpp $(ROOT)/src/espdl_private_pool.cpp \
 		-pthread -o $@
 
+test_espdl_tie_selftest: test_espdl_tie_selftest.cpp \
+	$(ROOT)/src/espdl_tie_selftest_logic.cpp \
+	$(ROOT)/include/agentguard/espdl_tie_selftest.h
+	$(CXX) $(CXXFLAGS) -I$(ROOT)/include \
+		test_espdl_tie_selftest.cpp \
+		$(ROOT)/src/espdl_tie_selftest_logic.cpp -o $@
+
 test: $(TARGETS)
 	./test_core
 	./test_vision
@@ -54,6 +61,7 @@ test: $(TARGETS)
 	./test_espdl_backend_config
 	./test_espdl_alloc_policy
 	./test_espdl_private_pool
+	./test_espdl_tie_selftest
 
 clean:
 	$(RM) $(TARGETS)
