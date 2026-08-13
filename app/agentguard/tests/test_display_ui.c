@@ -34,6 +34,21 @@ int main(void)
                                  123456, true, true, true);
   assert(strcmp(diagnostics, "M:99+ AI:9999+ K:11") == 0);
 
+  ag_ui_format_camera_phase(diagnostics, sizeof(diagnostics), 21);
+  assert(strcmp(diagnostics, "CAM:21") == 0);
+  ag_ui_format_camera_phase(diagnostics, sizeof(diagnostics), 28);
+  assert(strcmp(diagnostics, "CAM:28") == 0);
+
+  ag_ui_format_tie_selftest(diagnostics, sizeof(diagnostics), false,
+                            false, false);
+  assert(strcmp(diagnostics, "K:--") == 0);
+  ag_ui_format_tie_selftest(diagnostics, sizeof(diagnostics), true,
+                            true, false);
+  assert(strcmp(diagnostics, "K:10") == 0);
+  ag_ui_format_tie_selftest(diagnostics, sizeof(diagnostics), true,
+                            false, true);
+  assert(strcmp(diagnostics, "K:01") == 0);
+
   ag_ui_format_model_signal(diagnostics, sizeof(diagnostics), -128, 127,
                             50);
   assert(strcmp(diagnostics, "IN:-128:127 S:50") == 0);

@@ -83,7 +83,6 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
       bool tie_ram_pass = false;
       bool tie_flash_pass = false;
 
-      ag_espdl_tie_conv_selftest_run_once();
       g_diagnostics.tie_selftest_valid =
         ag_espdl_tie_conv_selftest_get_result(&tie_ram_pass,
                                               &tie_flash_pass) ? 1 : 0;

@@ -129,6 +129,35 @@ void ag_ui_format_model_diagnostics(char *buffer, size_t buffer_size,
            tie_ram_pass ? 1 : 0, tie_flash_pass ? 1 : 0);
 }
 
+void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
+                               uint8_t phase)
+{
+  if (buffer == NULL || buffer_size == 0)
+    {
+      return;
+    }
+
+  snprintf(buffer, buffer_size, "CAM:%u", phase);
+}
+
+void ag_ui_format_tie_selftest(char *buffer, size_t buffer_size,
+                               bool valid, bool ram_pass, bool flash_pass)
+{
+  if (buffer == NULL || buffer_size == 0)
+    {
+      return;
+    }
+
+  if (!valid)
+    {
+      snprintf(buffer, buffer_size, "K:--");
+      return;
+    }
+
+  snprintf(buffer, buffer_size, "K:%u%u",
+           ram_pass ? 1 : 0, flash_pass ? 1 : 0);
+}
+
 void ag_ui_format_model_signal(char *buffer, size_t buffer_size,
                                int16_t input_min, int16_t input_max,
                                uint8_t score_percent)
@@ -261,45 +290,6 @@ void ag_ui_rotate_180_rgb565(uint16_t *pixels, uint16_t width,
 static const char *ag_ui_primary_status(const struct ag_ui_status *status,
                                         uint16_t *color)
 {
-  if (status->camera_stale)
-    {
-      *color = AG_UI_RED;
-      switch (status->camera_phase)
-        {
-          case 1: return "CAM REGISTER";
-          case 2: return "CAM DEVICE";
-          case 3: return "CAM SENSOR";
-          case 4: return "CAM BUFFERS";
-          case 5: return "CAM STREAM";
-          case 6: return "CAM WAIT";
-          case 8: return "CAM HW";
-          case 9: return "CAM DATA";
-          case 10: return "CAM SENSOR REG";
-          case 11: return "CAM V4L2";
-          case 12: return "CAM CLOCK";
-          case 13: return "CAM GPIO";
-          case 14: return "CAM HW DONE";
-          case 15: return "CAM VSYNC";
-          case 16: return "CAM FRAME IRQ";
-          case 17: return "NO VSYNC";
-          case 18: return "VSYNC NO FRAME";
-          case 19: return "CAM DMA STOP";
-          case 20: return "CAM TIMESTAMP";
-          case 21: return "CAM WORK QUEUED";
-          case 22: return "CAM COPY";
-          case 23: return "CAM CALLBACK";
-          case 24: return "CAM WORK ERROR";
-          case 25: return "CAM NULL BUFFER";
-          case 26: return "V4L2 CALLBACK";
-          case 27: return "V4L2 LOCKED";
-          case 28: return "V4L2 NOTIFY";
-          case 29: return "V4L2 BUFFER DONE";
-          case 30: return "V4L2 WAKE DQBUF";
-          case 31: return "V4L2 COMPLETE";
-          default: return "CAMERA ERROR";
-        }
-    }
-
   if (status->reminders_paused)
     {
       *color = AG_UI_CYAN;
@@ -355,6 +345,7 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
   char posture_text[16];
   char diagnostics_text[24];
   char detail_text[40];
+  char camera_text[16];
   const char *primary;
   uint16_t accent;
   unsigned int origin_x;
@@ -418,7 +409,17 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
                  origin_y + 5, posture_text, AG_UI_WHITE);
     }
 
-  primary = ag_ui_primary_status(status, &accent);
+  if (status->camera_stale)
+    {
+      accent = AG_UI_RED;
+      ag_ui_format_camera_phase(camera_text, sizeof(camera_text),
+                                status->camera_phase);
+      primary = camera_text;
+    }
+  else
+    {
+      primary = ag_ui_primary_status(status, &accent);
+    }
   ag_ui_text(pixels, frame_width, origin_x + 5, footer_y + 5,
              primary, accent);
 
@@ -434,6 +435,13 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
                                      status->tie_selftest_valid,
                                      status->tie_ram_pass,
                                      status->tie_flash_pass);
+    }
+  else if (status->tie_selftest_valid)
+    {
+      ag_ui_format_tie_selftest(detail_text, sizeof(detail_text),
+                                status->tie_selftest_valid,
+                                status->tie_ram_pass,
+                                status->tie_flash_pass);
     }
   else
     {

@@ -7,6 +7,7 @@
 #include "agentguard/storage.h"
 #include "agentguard/vision.h"
 #ifdef CONFIG_AGENTGUARD_ESP_DL
+#  include "agentguard/espdl_tie_selftest.h"
 #  include "agentguard/vision_model.h"
 #endif
 
@@ -505,6 +506,11 @@ static void *ag_display_worker_main(void *argument)
         {
           status.camera_phase = g_agentguard_camera_phase;
         }
+#ifdef CONFIG_AGENTGUARD_ESP_DL
+      status.tie_selftest_valid =
+        ag_espdl_tie_conv_selftest_get_result(&status.tie_ram_pass,
+                                              &status.tie_flash_pass);
+#endif
       face = worker->face;
       last_camera_ms = worker->last_camera_ms;
       pthread_mutex_unlock(&worker->lock);
@@ -874,6 +880,10 @@ static int ag_run(void)
       fprintf(stderr, "agentguard: LCD initialization failed; retrying\n");
       usleep(AG_CAMERA_RESTART_DELAY_US);
     }
+
+#ifdef CONFIG_AGENTGUARD_ESP_DL
+  ag_espdl_tie_conv_selftest_run_once();
+#endif
 
   while (ag_display_worker_start(&display_worker, &display) < 0)
     {
