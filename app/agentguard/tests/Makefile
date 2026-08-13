@@ -1,0 +1,49 @@
+CC ?= cc
+CXX ?= c++
+CFLAGS ?= -std=c11 -Wall -Wextra -Werror -pedantic -O2
+CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
+
+ROOT := ..
+TARGETS := test_core test_vision test_storage test_display_ui \
+	test_espdl_backend_config test_espdl_alloc_policy
+
+.PHONY: all test clean
+all: $(TARGETS)
+
+test_core: test_core.c $(ROOT)/src/core.c $(ROOT)/include/agentguard/core.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_core.c $(ROOT)/src/core.c -o $@
+
+test_vision: test_vision.c $(ROOT)/src/vision.c $(ROOT)/include/agentguard/vision.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_vision.c $(ROOT)/src/vision.c -o $@
+
+test_storage: test_storage.c $(ROOT)/src/storage.c $(ROOT)/src/core.c \
+	$(ROOT)/include/agentguard/storage.h $(ROOT)/include/agentguard/core.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_storage.c $(ROOT)/src/storage.c \
+		$(ROOT)/src/core.c -o $@
+
+test_display_ui: test_display_ui.c $(ROOT)/src/display_ui.c \
+	$(ROOT)/include/agentguard/display_ui.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_display_ui.c \
+		$(ROOT)/src/display_ui.c -o $@
+
+test_espdl_backend_config: test_espdl_backend_config.cpp \
+	$(ROOT)/third_party/esp-dl/dl/dl_define_private.hpp \
+	$(ROOT)/compat/espdl/sdkconfig.h
+	$(CXX) $(CXXFLAGS) -I$(ROOT)/compat/espdl \
+		-I$(ROOT)/third_party/esp-dl/dl \
+		$< -o $@
+
+test_espdl_alloc_policy: test_espdl_alloc_policy.c \
+	$(ROOT)/compat/espdl/esp_heap_caps.h
+	$(CC) $(CFLAGS) -I$(ROOT)/compat/espdl $< -o $@
+
+test: $(TARGETS)
+	./test_core
+	./test_vision
+	./test_storage
+	./test_display_ui
+	./test_espdl_backend_config
+	./test_espdl_alloc_policy
+
+clean:
+	$(RM) $(TARGETS)
