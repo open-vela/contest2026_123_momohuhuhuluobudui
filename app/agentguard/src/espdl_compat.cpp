@@ -7,10 +7,9 @@
 #include <string.h>
 #include <time.h>
 
-#include <arch/arch.h>
-
 #include "esp_heap_caps.h"
 #include "espdl_alloc_policy.h"
+#include "espdl_private_pool.h"
 
 extern "C"
 {
@@ -30,7 +29,7 @@ void *heap_caps_malloc(size_t size, uint32_t caps)
 {
   if (ag_espdl_caps_require_internal(caps))
     {
-      return xtensa_imm_malloc(size);
+      return ag_espdl_private_malloc(size);
     }
 
   return malloc(size);
@@ -40,6 +39,11 @@ void *heap_caps_calloc(size_t count, size_t size, uint32_t caps)
 {
   size_t bytes;
   void *memory;
+
+  if (ag_espdl_caps_require_internal(caps))
+    {
+      return ag_espdl_private_calloc(count, size);
+    }
 
   if (size != 0 && count > SIZE_MAX / size)
     {
@@ -60,7 +64,7 @@ void *heap_caps_aligned_alloc(size_t alignment, size_t size, uint32_t caps)
 {
   if (ag_espdl_caps_require_internal(caps))
     {
-      return xtensa_imm_memalign(alignment, size);
+      return ag_espdl_private_aligned_alloc(alignment, size);
     }
 
   return memalign(alignment, size);
@@ -71,6 +75,11 @@ void *heap_caps_aligned_calloc(size_t alignment, size_t count, size_t size,
 {
   size_t bytes;
   void *memory;
+
+  if (ag_espdl_caps_require_internal(caps))
+    {
+      return ag_espdl_private_aligned_calloc(alignment, count, size);
+    }
 
   if (size != 0 && count > SIZE_MAX / size)
     {
@@ -95,9 +104,9 @@ void heap_caps_free(void *memory)
       return;
     }
 
-  if (xtensa_imm_heapmember(memory))
+  if (ag_espdl_private_owns(memory))
     {
-      xtensa_imm_free(memory);
+      ag_espdl_private_free(memory);
     }
   else
     {
@@ -109,7 +118,7 @@ size_t heap_caps_get_free_size(uint32_t caps)
 {
   if (ag_espdl_caps_require_internal(caps))
     {
-      return xtensa_imm_mallinfo().fordblks;
+      return ag_espdl_private_free_size();
     }
 
   struct mallinfo info = mallinfo();
@@ -120,7 +129,7 @@ size_t heap_caps_get_largest_free_block(uint32_t caps)
 {
   if (ag_espdl_caps_require_internal(caps))
     {
-      return xtensa_imm_mallinfo().mxordblk;
+      return ag_espdl_private_largest_free_block();
     }
 
   struct mallinfo info = mallinfo();

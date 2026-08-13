@@ -71,11 +71,11 @@ fi
 # raises EXCCAUSE_CP3_DISABLED (0x23).
 "$tweak" --file "$config_file" --set-val XTENSA_CP_INITSET 0x0009
 
-# ESP-DL marks vector operands and DMA/SIMD scratch buffers as internal-only.
-# Give those allocations, together with Xtensa task stacks, a dedicated DRAM
-# heap so they cannot silently land in PSRAM through the common heap.
-"$tweak" --file "$config_file" --enable XTENSA_IMEM_USE_SEPARATE_HEAP
-"$tweak" --file "$config_file" --set-val XTENSA_IMEM_REGION_SIZE 0x18000
+# The Xtensa separate internal heap also redirects every task stack into a
+# 96 KiB pool.  On this board's flat startup path, initial task creation then
+# produces an invalid scheduler context before the LCD task can start.  Keep
+# it disabled; ESP-DL operator staging must not depend on this global switch.
+"$tweak" --file "$config_file" --disable XTENSA_IMEM_USE_SEPARATE_HEAP
 
 # Use the last 1 MiB of the configured 4 MiB flash address space for the
 # official ESP32-S3 board LittleFS mount at /mnt/spif.  Keeping the partition
