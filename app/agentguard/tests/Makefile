@@ -5,6 +5,7 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 
 ROOT := ..
 TARGETS := test_core test_vision test_storage test_display_ui \
+	test_frame_timing \
 	test_espdl_backend_config test_espdl_alloc_policy \
 	test_espdl_private_pool test_espdl_tie_selftest
 
@@ -26,6 +27,11 @@ test_display_ui: test_display_ui.c $(ROOT)/src/display_ui.c \
 	$(ROOT)/include/agentguard/display_ui.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_display_ui.c \
 		$(ROOT)/src/display_ui.c -o $@
+
+test_frame_timing: test_frame_timing.c $(ROOT)/src/frame_timing.c \
+	$(ROOT)/include/agentguard/frame_timing.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_frame_timing.c \
+		$(ROOT)/src/frame_timing.c -o $@
 
 test_espdl_backend_config: test_espdl_backend_config.cpp \
 	$(ROOT)/third_party/esp-dl/dl/dl_define_private.hpp \
@@ -58,6 +64,7 @@ test: $(TARGETS)
 	./test_vision
 	./test_storage
 	./test_display_ui
+	./test_frame_timing
 	./test_espdl_backend_config
 	./test_espdl_alloc_policy
 	./test_espdl_private_pool
