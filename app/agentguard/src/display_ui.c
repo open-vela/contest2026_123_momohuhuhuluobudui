@@ -158,6 +158,31 @@ void ag_ui_format_tie_selftest(char *buffer, size_t buffer_size,
            ram_pass ? 1 : 0, flash_pass ? 1 : 0);
 }
 
+void ag_ui_format_tie_progress(char *buffer, size_t buffer_size,
+                               uint8_t stage, bool valid,
+                               bool ram_pass, bool flash_pass)
+{
+  if (buffer == NULL || buffer_size == 0)
+    {
+      return;
+    }
+
+  if (stage == 0)
+    {
+      ag_ui_format_tie_selftest(buffer, buffer_size, valid,
+                                ram_pass, flash_pass);
+    }
+  else if (stage == 42 && valid)
+    {
+      snprintf(buffer, buffer_size, "D:42 K:%u%u",
+               ram_pass ? 1 : 0, flash_pass ? 1 : 0);
+    }
+  else
+    {
+      snprintf(buffer, buffer_size, "D:%u", stage);
+    }
+}
+
 void ag_ui_format_model_signal(char *buffer, size_t buffer_size,
                                int16_t input_min, int16_t input_max,
                                uint8_t score_percent)
@@ -427,7 +452,15 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
   minutes = total_seconds / 60;
   seconds = total_seconds % 60;
   if (minutes > 99) minutes = 99;
-  if (status->model_diagnostics_valid)
+  if (status->tie_selftest_stage != 0)
+    {
+      ag_ui_format_tie_progress(detail_text, sizeof(detail_text),
+                                status->tie_selftest_stage,
+                                status->tie_selftest_valid,
+                                status->tie_ram_pass,
+                                status->tie_flash_pass);
+    }
+  else if (status->model_diagnostics_valid)
     {
       ag_ui_format_model_diagnostics(detail_text, sizeof(detail_text),
                                      status->msr_candidates,
@@ -438,7 +471,8 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
     }
   else if (status->tie_selftest_valid)
     {
-      ag_ui_format_tie_selftest(detail_text, sizeof(detail_text),
+      ag_ui_format_tie_progress(detail_text, sizeof(detail_text),
+                                status->tie_selftest_stage,
                                 status->tie_selftest_valid,
                                 status->tie_ram_pass,
                                 status->tie_flash_pass);

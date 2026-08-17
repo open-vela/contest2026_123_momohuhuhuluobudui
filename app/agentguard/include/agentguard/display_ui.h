@@ -21,6 +21,7 @@ struct ag_ui_status
   uint8_t pixel_mode_scores[4];
   uint8_t reference_score_percent;
   uint8_t reference_face_count;
+  uint8_t tie_selftest_stage;
   bool tie_selftest_valid;
   bool tie_ram_pass;
   bool tie_flash_pass;
@@ -46,6 +47,9 @@ void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
                                uint8_t phase);
 void ag_ui_format_tie_selftest(char *buffer, size_t buffer_size,
                                bool valid, bool ram_pass, bool flash_pass);
+void ag_ui_format_tie_progress(char *buffer, size_t buffer_size,
+                               uint8_t stage, bool valid,
+                               bool ram_pass, bool flash_pass);
 void ag_ui_format_model_signal(char *buffer, size_t buffer_size,
                                int16_t input_min, int16_t input_max,
                                uint8_t score_percent);

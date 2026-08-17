@@ -49,6 +49,19 @@ int main(void)
                             false, true);
   assert(strcmp(diagnostics, "K:01") == 0);
 
+  ag_ui_format_tie_progress(diagnostics, sizeof(diagnostics), 0,
+                            false, false, false);
+  assert(strcmp(diagnostics, "K:--") == 0);
+  ag_ui_format_tie_progress(diagnostics, sizeof(diagnostics), 40,
+                            false, false, false);
+  assert(strcmp(diagnostics, "D:40") == 0);
+  ag_ui_format_tie_progress(diagnostics, sizeof(diagnostics), 41,
+                            false, false, false);
+  assert(strcmp(diagnostics, "D:41") == 0);
+  ag_ui_format_tie_progress(diagnostics, sizeof(diagnostics), 42,
+                            true, true, false);
+  assert(strcmp(diagnostics, "D:42 K:10") == 0);
+
   ag_ui_format_model_signal(diagnostics, sizeof(diagnostics), -128, 127,
                             50);
   assert(strcmp(diagnostics, "IN:-128:127 S:50") == 0);
