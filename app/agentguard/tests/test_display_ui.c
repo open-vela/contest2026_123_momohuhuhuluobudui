@@ -62,6 +62,27 @@ int main(void)
                             true, true, false);
   assert(strcmp(diagnostics, "D:42 K:10") == 0);
 
+  memset(&status, 0, sizeof(status));
+  status.tie_selftest_stage = 42;
+  status.tie_selftest_valid = true;
+  status.tie_ram_pass = true;
+  status.tie_flash_pass = true;
+  status.model_diagnostics_valid = true;
+  status.msr_candidates = 3;
+  status.inference_ms = 847;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "M:3 AI:847 K:11") == 0);
+
+  status.model_diagnostics_valid = false;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "D:42 K:11") == 0);
+
+  memset(&status, 0, sizeof(status));
+  assert(!ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                         &status));
+
   ag_ui_format_model_signal(diagnostics, sizeof(diagnostics), -128, 127,
                             50);
   assert(strcmp(diagnostics, "IN:-128:127 S:50") == 0);

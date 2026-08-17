@@ -183,6 +183,38 @@ void ag_ui_format_tie_progress(char *buffer, size_t buffer_size,
     }
 }
 
+bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
+                                    const struct ag_ui_status *status)
+{
+  if (buffer == NULL || buffer_size == 0 || status == NULL)
+    {
+      return false;
+    }
+
+  if (status->model_diagnostics_valid)
+    {
+      ag_ui_format_model_diagnostics(buffer, buffer_size,
+                                     status->msr_candidates,
+                                     status->inference_ms,
+                                     status->tie_selftest_valid,
+                                     status->tie_ram_pass,
+                                     status->tie_flash_pass);
+      return true;
+    }
+
+  if (status->tie_selftest_stage != 0 || status->tie_selftest_valid)
+    {
+      ag_ui_format_tie_progress(buffer, buffer_size,
+                                status->tie_selftest_stage,
+                                status->tie_selftest_valid,
+                                status->tie_ram_pass,
+                                status->tie_flash_pass);
+      return true;
+    }
+
+  return false;
+}
+
 void ag_ui_format_model_signal(char *buffer, size_t buffer_size,
                                int16_t input_min, int16_t input_max,
                                uint8_t score_percent)
@@ -452,32 +484,8 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
   minutes = total_seconds / 60;
   seconds = total_seconds % 60;
   if (minutes > 99) minutes = 99;
-  if (status->tie_selftest_stage != 0)
-    {
-      ag_ui_format_tie_progress(detail_text, sizeof(detail_text),
-                                status->tie_selftest_stage,
-                                status->tie_selftest_valid,
-                                status->tie_ram_pass,
-                                status->tie_flash_pass);
-    }
-  else if (status->model_diagnostics_valid)
-    {
-      ag_ui_format_model_diagnostics(detail_text, sizeof(detail_text),
-                                     status->msr_candidates,
-                                     status->inference_ms,
-                                     status->tie_selftest_valid,
-                                     status->tie_ram_pass,
-                                     status->tie_flash_pass);
-    }
-  else if (status->tie_selftest_valid)
-    {
-      ag_ui_format_tie_progress(detail_text, sizeof(detail_text),
-                                status->tie_selftest_stage,
-                                status->tie_selftest_valid,
-                                status->tie_ram_pass,
-                                status->tie_flash_pass);
-    }
-  else
+  if (!ag_ui_format_diagnostic_detail(detail_text, sizeof(detail_text),
+                                      status))
     {
       snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu FRM:%05lu",
                minutes, seconds,
