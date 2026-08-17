@@ -62,6 +62,7 @@ test: $(TARGETS)
 	./test_espdl_alloc_policy
 	./test_espdl_private_pool
 	./test_espdl_tie_selftest
+	python3 test_espdl_tie_no_stdio.py
 
 clean:
 	$(RM) $(TARGETS)

@@ -6,7 +6,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 
 #include "dl_base.hpp"
 #include "dl_base_tie728.h"
@@ -80,18 +79,6 @@ make_args(int8_t *output, const int8_t *filter)
   return args;
 }
 
-void print_vector(const int8_t output[kTieLaneCount])
-{
-  std::fprintf(stderr, "[");
-  for (size_t lane = 0; lane < kTieLaneCount; ++lane)
-    {
-      std::fprintf(stderr, "%s%d", lane == 0 ? "" : ",",
-                   static_cast<int>(output[lane]));
-    }
-
-  std::fprintf(stderr, "]");
-}
-
 } // namespace
 
 extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
@@ -120,8 +107,6 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
     kInput, kRamFilter.values, 0);
   bool ram_pass = ag_tie_selftest_all_equal(kRamOutput, expected);
   bool flash_pass = ag_tie_selftest_all_equal(kFlashOutput, expected);
-  enum ag_tie_selftest_classification classification =
-    ag_tie_selftest_classify(ram_pass, flash_pass);
   uint8_t result = kResultValid;
 
   if (ram_pass)
@@ -137,23 +122,6 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
   g_result.store(result, std::memory_order_release);
   g_stage.store(AG_TIE_SELFTEST_STAGE_COMPLETE,
                 std::memory_order_release);
-
-  std::fprintf(stderr,
-               "agentguard: TIE_SELFTEST in=%p ram_filter=%p "
-               "flash_filter=%p args=%p ram_out=%p flash_out=%p expected=%d "
-               "ram=",
-               static_cast<void *>(kInput),
-               static_cast<void *>(kRamFilter.values),
-               static_cast<const void *>(kFlashFilter.values),
-               static_cast<void *>(&ram_args),
-               static_cast<void *>(kRamOutput),
-               static_cast<void *>(kFlashOutput),
-               static_cast<int>(expected));
-  print_vector(kRamOutput);
-  std::fprintf(stderr, " flash=");
-  print_vector(kFlashOutput);
-  std::fprintf(stderr, " result=%s\n",
-               ag_tie_selftest_classification_name(classification));
 }
 
 extern "C" uint8_t ag_espdl_tie_conv_selftest_get_stage(void)
