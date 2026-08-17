@@ -6,7 +6,7 @@
 
 **Architecture:** A new pure C frame-timing module owns timestamp validation, interval calculation, clamping, and reset behavior. The AgentGuard main loop measures immediately around `VIDIOC_DQBUF`, feeds the V4L2 completion timestamp into that module, and copies a valid sample into the existing mutex-protected UI status. The display formatter gives complete timing diagnostics priority over the current model/TIE footer without changing frame processing.
 
-**Tech Stack:** C11, POSIX/NuttX V4L2 `struct timeval`, host Make tests with warnings as errors, Python source-contract test, NuttX cross-build, esptool.
+**Tech Stack:** C11, POSIX/NuttX V4L2 `struct timeval`, host Make tests with warnings as errors, NuttX cross-build, esptool.
 
 ## Global Constraints
 
@@ -31,8 +31,7 @@
 **Interfaces:**
 - Produces: `struct ag_frame_timing_state` containing previous capture/acquisition timestamps, current `capture_interval_ms`, `dequeue_wait_ms`, `loop_interval_ms`, and `valid`/history flags.
 - Produces: `void ag_frame_timing_reset(struct ag_frame_timing_state *state)`.
-- Produces: `uint64_t ag_frame_timestamp_ms(int64_t seconds, int32_t microseconds)`; returns zero for negative seconds, microseconds outside `[0, 999999]`, or overflow.
-- Produces: `bool ag_frame_timing_update(struct ag_frame_timing_state *state, uint64_t dequeue_started_ms, uint64_t dequeue_finished_ms, uint64_t capture_timestamp_ms)`.
+- Produces: `bool ag_frame_timing_update(struct ag_frame_timing_state *state, uint64_t dequeue_started_ms, uint64_t dequeue_finished_ms, int64_t capture_seconds, int32_t capture_microseconds)`; validates and converts the V4L2 timestamp internally.
 
 - [ ] **Step 1: Add the failing host test and build target**
 
@@ -51,33 +50,36 @@ int main(void)
 
   ag_frame_timing_reset(&state);
   assert(!state.valid);
-  assert(ag_frame_timestamp_ms(12, 345000) == 12345);
-  assert(ag_frame_timestamp_ms(-1, 0) == 0);
-  assert(ag_frame_timestamp_ms(1, -1) == 0);
-  assert(ag_frame_timestamp_ms(1, 1000000) == 0);
 
-  assert(!ag_frame_timing_update(&state, 100, 130, 1000));
+  assert(!ag_frame_timing_update(&state, 100, 130, 1, 0));
   assert(!state.valid);
-  assert(ag_frame_timing_update(&state, 560, 600, 1500));
+  assert(ag_frame_timing_update(&state, 560, 600, 1, 500000));
   assert(state.capture_interval_ms == 500);
   assert(state.dequeue_wait_ms == 40);
   assert(state.loop_interval_ms == 470);
 
-  assert(!ag_frame_timing_update(&state, 650, 640, 1600));
+  assert(!ag_frame_timing_update(&state, 650, 640, 1, 600000));
   assert(!state.valid);
-  assert(!ag_frame_timing_update(&state, 700, 710, 0));
+  assert(!ag_frame_timing_update(&state, 700, 710, 0, 0));
   assert(!state.valid);
-  assert(!ag_frame_timing_update(&state, 800, 820, 1600));
+  assert(!ag_frame_timing_update(&state, 800, 820, 1, 600000));
   assert(!state.valid);
-  assert(!ag_frame_timing_update(&state, 900, 930, 1400));
+  assert(!ag_frame_timing_update(&state, 900, 930, 1, 400000));
   assert(!state.valid);
-  assert(ag_frame_timing_update(&state, 1000, 1040, 1900));
+  assert(ag_frame_timing_update(&state, 1000, 1040, 1, 900000));
   assert(state.capture_interval_ms == 500);
   assert(state.loop_interval_ms == 110);
 
   ag_frame_timing_reset(&state);
   assert(!state.valid);
-  assert(!ag_frame_timing_update(&state, 1000, 1010, 2000));
+  assert(!ag_frame_timing_update(&state, 1000, 1010, -1, 0));
+  assert(!state.have_capture_timestamp);
+  assert(!ag_frame_timing_update(&state, 1020, 1030, 1, -1));
+  assert(!state.have_capture_timestamp);
+  assert(!ag_frame_timing_update(&state, 1040, 1050, 1, 1000000));
+  assert(!state.have_capture_timestamp);
+  assert(!ag_frame_timing_update(&state, 1060, 1070, INT64_MAX, 999999));
+  assert(!state.have_capture_timestamp);
 
   puts("AgentGuard frame timing tests: PASS");
   return 0;
@@ -94,7 +96,10 @@ Expected: FAIL because `agentguard/frame_timing.h` and its functions do not exis
 
 - [ ] **Step 3: Implement the minimal timing state**
 
-Define the public state and functions. `ag_frame_timing_update()` must:
+Define the public state and functions. `ag_frame_timing_update()` first
+validates `capture_seconds` and `capture_microseconds`, rejects negative or
+out-of-range fields and multiplication overflow, and otherwise calculates
+`capture_timestamp_ms = seconds * 1000 + microseconds / 1000`. It then must:
 
 ```c
 if (state == NULL)
@@ -137,12 +142,11 @@ state->valid = capture_valid && loop_valid;
 return state->valid;
 ```
 
-Perform the null check before dereferencing `state`. A missing capture
+Perform the null check before converting or dereferencing `state`. A missing capture
 timestamp and an invalid dequeue clock pair clear their corresponding history
 flag so the next sample establishes a new baseline instead of spanning the bad
 sample. Use `UINT32_MAX` when a calculated interval exceeds the public field
-width. `ag_frame_timestamp_ms()` must reject multiplication overflow before
-calculating `seconds * 1000 + microseconds / 1000`.
+width.
 
 - [ ] **Step 4: Verify GREEN and regression**
 
@@ -250,52 +254,26 @@ feat: display camera frame timing diagnostics
 **Files:**
 - Modify: `app/agentguard/Makefile`
 - Modify: `app/agentguard/src/agentguard_main.c`
-- Create: `app/agentguard/tests/test_frame_timing_integration.py`
-- Modify: `app/agentguard/tests/Makefile`
 
 **Interfaces:**
-- Consumes: Task 1 `ag_frame_timing_reset()`, `ag_frame_timestamp_ms()`, and `ag_frame_timing_update()`.
+- Consumes: Task 1 `ag_frame_timing_reset()` and `ag_frame_timing_update()`.
 - Consumes: Task 2 timing fields in `struct ag_ui_status`.
 - Changes: `ag_video_restart()` accepts a `struct ag_frame_timing_state *` and resets it before closing/reopening the stream.
 
-- [ ] **Step 1: Add a failing source-contract test**
+- [ ] **Step 1: Confirm the tested timing and UI boundaries are GREEN**
 
-Create `test_frame_timing_integration.py` that reads
-`src/agentguard_main.c` and asserts all of these exact contracts:
+Run: `make -C app/agentguard/tests clean test`
 
-```python
-from pathlib import Path
+Expected: the real frame-timing state tests, UI formatting tests, all existing
+host tests, and the no-stdio contract pass. No source-text test is used because
+the integration below is trivial forwarding into those tested boundaries.
 
-source = (Path(__file__).parent.parent / "src" /
-          "agentguard_main.c").read_text(encoding="utf-8")
-
-assert '#include "agentguard/frame_timing.h"' in source
-assert "dequeue_started_ms = ag_now_ms();" in source
-assert "dequeue_finished_ms = ag_now_ms();" in source
-assert source.index("dequeue_started_ms = ag_now_ms();") < source.index(
-    "ag_next_frame(&video, &watchdog, &frame)")
-assert source.index("ag_next_frame(&video, &watchdog, &frame)") < source.index(
-    "dequeue_finished_ms = ag_now_ms();")
-assert "ag_frame_timestamp_ms(frame.timestamp.tv_sec," in source
-assert "ag_frame_timing_update(&frame_timing," in source
-assert "ui_status.frame_timing_valid = frame_timing.valid;" in source
-assert "ag_frame_timing_reset(frame_timing);" in source
-```
-
-Add `python3 test_frame_timing_integration.py` to the test recipe.
-
-- [ ] **Step 2: Verify the integration contract is RED**
-
-Run: `python3 app/agentguard/tests/test_frame_timing_integration.py`
-
-Expected: FAIL at the missing `frame_timing.h` include assertion.
-
-- [ ] **Step 3: Integrate measurement without changing frame behavior**
+- [ ] **Step 2: Integrate measurement without changing frame behavior**
 
 Add `src/frame_timing.c` to `CSRCS` and include the header from
 `agentguard_main.c`. In `ag_run()`, declare the timing state plus
-`dequeue_started_ms`, `dequeue_finished_ms`, and `capture_timestamp_ms`, then
-reset the state once before the frame loop.
+`dequeue_started_ms` and `dequeue_finished_ms`, then reset the state once
+before the frame loop.
 
 Measure around the existing dequeue call in this order:
 
@@ -310,12 +288,11 @@ if (ag_next_frame(&video, &watchdog, &frame) < 0)
     continue;
   }
 dequeue_finished_ms = ag_now_ms();
-capture_timestamp_ms = ag_frame_timestamp_ms(frame.timestamp.tv_sec,
-                                              frame.timestamp.tv_usec);
 ag_frame_timing_update(&frame_timing,
                        dequeue_started_ms,
                        dequeue_finished_ms,
-                       capture_timestamp_ms);
+                       frame.timestamp.tv_sec,
+                       frame.timestamp.tv_usec);
 ```
 
 When populating `ui_status`, copy the state before publishing:
@@ -332,19 +309,20 @@ Change `ag_video_restart()` to reset the supplied timing state before
 `VIDIOC_QBUF`-error call sites. Preserve the existing error messages and the
 `camera stream recovered` message around the expanded call shown above.
 
-- [ ] **Step 4: Verify integration and all host tests**
-
-Run: `python3 app/agentguard/tests/test_frame_timing_integration.py`
-
-Expected: exit zero.
+- [ ] **Step 3: Verify host regression and target integration**
 
 Run: `make -C app/agentguard/tests clean test`
 
-Expected: every compiled host test plus both Python source-contract tests pass.
+Expected: every compiled host test and the existing no-stdio contract pass.
 
-- [ ] **Step 5: Commit the runtime integration**
+Activate `/home/yhx/Desktop/openvela/myenv/bin/activate` and run
+`make -C /home/yhx/Desktop/openvela/nuttx -j8`.
 
-Stage only the four Task 3 files and commit:
+Expected: `frame_timing.c` compiles for NuttX and the complete firmware links.
+
+- [ ] **Step 4: Commit the runtime integration**
+
+Stage only the two Task 3 files and commit:
 
 ```text
 feat: measure camera frame pipeline timing
