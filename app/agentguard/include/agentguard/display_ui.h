@@ -26,7 +26,11 @@ struct ag_ui_status
   bool tie_ram_pass;
   bool tie_flash_pass;
   uint32_t inference_ms;
+  uint32_t capture_interval_ms;
+  uint32_t dequeue_wait_ms;
+  uint32_t loop_interval_ms;
   bool model_diagnostics_valid;
+  bool frame_timing_valid;
   bool calibrated;
   bool reminders_paused;
   bool privacy_enabled;
@@ -43,6 +47,11 @@ void ag_ui_format_model_diagnostics(char *buffer, size_t buffer_size,
                                     bool tie_selftest_valid,
                                     bool tie_ram_pass,
                                     bool tie_flash_pass);
+void ag_ui_format_frame_timing(char *buffer, size_t buffer_size,
+                               uint32_t capture_interval_ms,
+                               uint32_t dequeue_wait_ms,
+                               uint32_t loop_interval_ms,
+                               uint32_t inference_ms);
 void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
                                uint8_t phase);
 void ag_ui_format_tie_selftest(char *buffer, size_t buffer_size,

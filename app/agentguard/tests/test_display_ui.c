@@ -16,7 +16,7 @@ static uint16_t frame[WIDTH * HEIGHT];
 int main(void)
 {
   struct ag_ui_status status;
-  char diagnostics[24];
+  char diagnostics[40];
   uint16_t rotation_sample[6] = {1, 2, 3, 4, 5, 6};
   uint16_t no_face_color;
   uint16_t one_face_color;
@@ -33,6 +33,15 @@ int main(void)
   ag_ui_format_model_diagnostics(diagnostics, sizeof(diagnostics), 255,
                                  123456, true, true, true);
   assert(strcmp(diagnostics, "M:99+ AI:9999+ K:11") == 0);
+
+  ag_ui_format_frame_timing(diagnostics, sizeof(diagnostics),
+                            500, 430, 500, 70);
+  assert(strcmp(diagnostics, "C:500 Q:430 L:500 AI:70") == 0);
+
+  ag_ui_format_frame_timing(diagnostics, sizeof(diagnostics),
+                            10000, UINT32_MAX, 9999, 12345);
+  assert(strcmp(diagnostics,
+                "C:9999+ Q:9999+ L:9999 AI:9999+") == 0);
 
   ag_ui_format_camera_phase(diagnostics, sizeof(diagnostics), 21);
   assert(strcmp(diagnostics, "CAM:21") == 0);
@@ -70,6 +79,15 @@ int main(void)
   status.model_diagnostics_valid = true;
   status.msr_candidates = 3;
   status.inference_ms = 847;
+  status.frame_timing_valid = true;
+  status.capture_interval_ms = 500;
+  status.dequeue_wait_ms = 430;
+  status.loop_interval_ms = 500;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "C:500 Q:430 L:500 AI:847") == 0);
+
+  status.frame_timing_valid = false;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
   assert(strcmp(diagnostics, "M:3 AI:847 K:11") == 0);

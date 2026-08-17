@@ -84,6 +84,19 @@ static const uint8_t *ag_ui_glyph(char character)
   return blank;
 }
 
+static void ag_ui_format_bounded_ms(char *buffer, size_t buffer_size,
+                                    uint32_t value)
+{
+  if (value > 9999)
+    {
+      snprintf(buffer, buffer_size, "9999+");
+    }
+  else
+    {
+      snprintf(buffer, buffer_size, "%lu", (unsigned long)value);
+    }
+}
+
 void ag_ui_format_model_diagnostics(char *buffer, size_t buffer_size,
                                     uint8_t msr_candidates,
                                     uint32_t inference_ms,
@@ -127,6 +140,33 @@ void ag_ui_format_model_diagnostics(char *buffer, size_t buffer_size,
 
   snprintf(buffer, buffer_size, "%s K:%u%u", model_text,
            tie_ram_pass ? 1 : 0, tie_flash_pass ? 1 : 0);
+}
+
+void ag_ui_format_frame_timing(char *buffer, size_t buffer_size,
+                               uint32_t capture_interval_ms,
+                               uint32_t dequeue_wait_ms,
+                               uint32_t loop_interval_ms,
+                               uint32_t inference_ms)
+{
+  char capture_text[6];
+  char dequeue_text[6];
+  char loop_text[6];
+  char inference_text[6];
+
+  if (buffer == NULL || buffer_size == 0)
+    {
+      return;
+    }
+
+  ag_ui_format_bounded_ms(capture_text, sizeof(capture_text),
+                          capture_interval_ms);
+  ag_ui_format_bounded_ms(dequeue_text, sizeof(dequeue_text),
+                          dequeue_wait_ms);
+  ag_ui_format_bounded_ms(loop_text, sizeof(loop_text), loop_interval_ms);
+  ag_ui_format_bounded_ms(inference_text, sizeof(inference_text),
+                          inference_ms);
+  snprintf(buffer, buffer_size, "C:%s Q:%s L:%s AI:%s",
+           capture_text, dequeue_text, loop_text, inference_text);
 }
 
 void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
@@ -189,6 +229,16 @@ bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
   if (buffer == NULL || buffer_size == 0 || status == NULL)
     {
       return false;
+    }
+
+  if (status->frame_timing_valid && status->model_diagnostics_valid)
+    {
+      ag_ui_format_frame_timing(buffer, buffer_size,
+                                status->capture_interval_ms,
+                                status->dequeue_wait_ms,
+                                status->loop_interval_ms,
+                                status->inference_ms);
+      return true;
     }
 
   if (status->model_diagnostics_valid)
