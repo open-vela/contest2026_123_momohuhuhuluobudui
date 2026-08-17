@@ -50,6 +50,13 @@ fi
 # GPIO2, but ESP32-S3-EYE connects camera XCLK to GPIO15.
 "$tweak" --file "$config_file" --set-val ESP32S3_LEDC_CHANNEL0_PIN 15
 
+# The ST7789 frame is 115,200 bytes.  Polling SPI splits it into roughly 1,800
+# 64-byte transactions and visibly scans the LCD.  Use the existing SPI2 DMA
+# path; the display worker cleans its cached transmit buffer before submission.
+"$tweak" --file "$config_file" --enable ESP32S3_SPI_DMA
+"$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMA_BUFSIZE 2048
+"$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMATHRESHOLD 64
+
 # AgentGuard uses Wi-Fi but does not use Bluetooth.  On the tested board the
 # BLE HCI startup work item intermittently panicked in hpwork, so keep the
 # unused controller and Wi-Fi/BT coexistence path disabled for this product.

@@ -5,6 +5,8 @@
 #include "agentguard/core.h"
 #include "agentguard/display_ui.h"
 #include "agentguard/frame_timing.h"
+#include "agentguard/lcd_timing.h"
+#include "agentguard/lcd_transfer.h"
 #include "agentguard/storage.h"
 #include "agentguard/vision.h"
 #ifdef CONFIG_AGENTGUARD_ESP_DL
@@ -31,6 +33,7 @@
 #include <unistd.h>
 
 #include <nuttx/board.h>
+#include <nuttx/cache.h>
 #include <nuttx/input/buttons.h>
 #include <nuttx/lcd/lcd_dev.h>
 #include <nuttx/leds/userled.h>
@@ -92,6 +95,12 @@ struct ag_display
   uint16_t width;
   uint16_t height;
   unsigned int frame_count;
+};
+
+struct ag_lcd_submit_context
+{
+  struct ag_display *display;
+  struct lcddev_area_s *area;
 };
 
 struct ag_camera_watchdog
@@ -453,10 +462,42 @@ static void ag_draw_face_box(uint16_t *pixels, uint16_t width,
     }
 }
 
+static bool ag_lcd_read_ms(void *context, uint64_t *value)
+{
+  struct timespec now;
+
+  (void)context;
+  if (value == NULL || clock_gettime(CLOCK_MONOTONIC, &now) < 0 ||
+      now.tv_sec < 0)
+    {
+      return false;
+    }
+
+  *value = (uint64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
+  return true;
+}
+
+static void ag_lcd_clean(void *context, uintptr_t start, uintptr_t end)
+{
+  (void)context;
+  up_clean_dcache(start, end);
+}
+
+static int ag_lcd_submit(void *argument)
+{
+  struct ag_lcd_submit_context *context = argument;
+
+  return ioctl(context->display->fd, LCDDEVIO_PUTAREA,
+               (uintptr_t)context->area);
+}
+
 static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
-                             uint16_t width, uint16_t height)
+                             uint16_t width, uint16_t height,
+                             struct ag_lcd_timing_state *lcd_timing)
 {
   struct lcddev_area_s area;
+  struct ag_lcd_submit_context context;
+  struct ag_lcd_transfer_ops ops;
   uint16_t visible_width;
   uint16_t visible_height;
   uint16_t source_x;
@@ -478,7 +519,15 @@ static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
   area.col_end = visible_width - 1;
   area.stride = width * sizeof(*pixels);
   area.data = (uint8_t *)(pixels + source_y * width + source_x);
-  if (ioctl(display->fd, LCDDEVIO_PUTAREA, (uintptr_t)&area) < 0)
+
+  context.display = display;
+  context.area = &area;
+  ops.read_ms = ag_lcd_read_ms;
+  ops.clean = ag_lcd_clean;
+  ops.submit = ag_lcd_submit;
+  ops.context = &context;
+  if (ag_lcd_transfer_run(&ops, (uintptr_t)pixels, AG_FRAME_BYTES,
+                          lcd_timing) < 0)
     {
       fprintf(stderr, "agentguard: LCD preview stopped: %d\n", errno);
       ag_display_close(display);
@@ -490,9 +539,12 @@ static void *ag_display_worker_main(void *argument)
   struct ag_display_worker *worker = argument;
   struct ag_ui_status status;
   struct ag_face_box face;
+  struct ag_lcd_timing_state lcd_timing;
   uint64_t last_camera_ms;
   bool have_frame;
   unsigned int heartbeat = 0;
+
+  ag_lcd_timing_reset(&lcd_timing);
 
   for (;;)
     {
@@ -520,6 +572,9 @@ static void *ag_display_worker_main(void *argument)
       last_camera_ms = worker->last_camera_ms;
       pthread_mutex_unlock(&worker->lock);
 
+      status.lcd_write_valid = lcd_timing.valid;
+      status.lcd_write_ms = lcd_timing.write_ms;
+
       if (!have_frame)
         {
           memset(worker->draw_pixels, 0, AG_FRAME_BYTES);
@@ -536,7 +591,7 @@ static void *ag_display_worker_main(void *argument)
                           worker->display->width,
                           worker->display->height, &status);
       ag_display_frame(worker->display, worker->draw_pixels,
-                       AG_WIDTH, AG_HEIGHT);
+                       AG_WIDTH, AG_HEIGHT, &lcd_timing);
 
       usleep(AG_DISPLAY_REFRESH_US);
     }

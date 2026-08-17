@@ -83,6 +83,7 @@ test: $(TARGETS)
 	./test_espdl_private_pool
 	./test_espdl_tie_selftest
 	python3 test_espdl_tie_no_stdio.py
+	python3 test_lcd_dma_config.py
 
 clean:
 	$(RM) $(TARGETS)
