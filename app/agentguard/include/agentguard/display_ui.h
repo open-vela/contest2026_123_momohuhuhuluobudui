@@ -29,8 +29,10 @@ struct ag_ui_status
   uint32_t capture_interval_ms;
   uint32_t dequeue_wait_ms;
   uint32_t loop_interval_ms;
+  uint32_t lcd_write_ms;
   bool model_diagnostics_valid;
   bool frame_timing_valid;
+  bool lcd_write_valid;
   bool calibrated;
   bool reminders_paused;
   bool privacy_enabled;
@@ -52,6 +54,11 @@ void ag_ui_format_frame_timing(char *buffer, size_t buffer_size,
                                uint32_t dequeue_wait_ms,
                                uint32_t loop_interval_ms,
                                uint32_t inference_ms);
+void ag_ui_format_lcd_timing(char *buffer, size_t buffer_size,
+                             uint32_t capture_interval_ms,
+                             uint32_t dequeue_wait_ms,
+                             uint32_t loop_interval_ms,
+                             uint32_t lcd_write_ms);
 void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
                                uint8_t phase);
 void ag_ui_format_tie_selftest(char *buffer, size_t buffer_size,

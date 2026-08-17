@@ -169,6 +169,32 @@ void ag_ui_format_frame_timing(char *buffer, size_t buffer_size,
            capture_text, dequeue_text, loop_text, inference_text);
 }
 
+void ag_ui_format_lcd_timing(char *buffer, size_t buffer_size,
+                             uint32_t capture_interval_ms,
+                             uint32_t dequeue_wait_ms,
+                             uint32_t loop_interval_ms,
+                             uint32_t lcd_write_ms)
+{
+  char capture_text[6];
+  char dequeue_text[6];
+  char loop_text[6];
+  char display_text[6];
+
+  if (buffer == NULL || buffer_size == 0)
+    {
+      return;
+    }
+
+  ag_ui_format_bounded_ms(capture_text, sizeof(capture_text),
+                          capture_interval_ms);
+  ag_ui_format_bounded_ms(dequeue_text, sizeof(dequeue_text),
+                          dequeue_wait_ms);
+  ag_ui_format_bounded_ms(loop_text, sizeof(loop_text), loop_interval_ms);
+  ag_ui_format_bounded_ms(display_text, sizeof(display_text), lcd_write_ms);
+  snprintf(buffer, buffer_size, "C:%s Q:%s L:%s D:%s",
+           capture_text, dequeue_text, loop_text, display_text);
+}
+
 void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
                                uint8_t phase)
 {
@@ -229,6 +255,17 @@ bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
   if (buffer == NULL || buffer_size == 0 || status == NULL)
     {
       return false;
+    }
+
+  if (status->frame_timing_valid && status->model_diagnostics_valid &&
+      status->lcd_write_valid)
+    {
+      ag_ui_format_lcd_timing(buffer, buffer_size,
+                              status->capture_interval_ms,
+                              status->dequeue_wait_ms,
+                              status->loop_interval_ms,
+                              status->lcd_write_ms);
+      return true;
     }
 
   if (status->frame_timing_valid && status->model_diagnostics_valid)

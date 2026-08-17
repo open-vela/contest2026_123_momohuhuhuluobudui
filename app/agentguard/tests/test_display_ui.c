@@ -43,6 +43,15 @@ int main(void)
   assert(strcmp(diagnostics,
                 "C:9999+ Q:9999+ L:9999 AI:9999+") == 0);
 
+  ag_ui_format_lcd_timing(diagnostics, sizeof(diagnostics),
+                          92, 40, 94, 31);
+  assert(strcmp(diagnostics, "C:92 Q:40 L:94 D:31") == 0);
+
+  ag_ui_format_lcd_timing(diagnostics, sizeof(diagnostics),
+                          10000, UINT32_MAX, 9999, 12345);
+  assert(strcmp(diagnostics,
+                "C:9999+ Q:9999+ L:9999 D:9999+") == 0);
+
   ag_ui_format_camera_phase(diagnostics, sizeof(diagnostics), 21);
   assert(strcmp(diagnostics, "CAM:21") == 0);
   ag_ui_format_camera_phase(diagnostics, sizeof(diagnostics), 28);
@@ -83,6 +92,17 @@ int main(void)
   status.capture_interval_ms = 500;
   status.dequeue_wait_ms = 430;
   status.loop_interval_ms = 500;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "C:500 Q:430 L:500 AI:847") == 0);
+
+  status.lcd_write_valid = true;
+  status.lcd_write_ms = 31;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "C:500 Q:430 L:500 D:31") == 0);
+
+  status.lcd_write_valid = false;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
   assert(strcmp(diagnostics, "C:500 Q:430 L:500 AI:847") == 0);
