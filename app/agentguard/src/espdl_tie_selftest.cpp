@@ -3,6 +3,7 @@
 #include "agentguard/espdl_tie_selftest.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -16,6 +17,9 @@ namespace
 constexpr size_t kTieLaneCount = 16;
 constexpr size_t kTieFilterElementCount =
   kTieLaneCount * kTieLaneCount;
+constexpr uint8_t kResultValid = 1u << 2;
+constexpr uint8_t kResultRamPass = 1u << 1;
+constexpr uint8_t kResultFlashPass = 1u << 0;
 
 struct alignas(16) TieFilter
 {
@@ -39,9 +43,8 @@ alignas(16) constexpr TieFilter kFlashFilter = make_ones_filter();
 alignas(16) int8_t kRamOutput[kTieLaneCount];
 alignas(16) int8_t kFlashOutput[kTieLaneCount];
 bool g_selftest_already_ran;
-bool g_result_valid;
-bool g_ram_pass;
-bool g_flash_pass;
+std::atomic<uint8_t> g_stage{AG_TIE_SELFTEST_STAGE_IDLE};
+std::atomic<uint8_t> g_result{0};
 
 static_assert(sizeof(void *) == 4);
 static_assert(offsetof(dl::base::ArgsType<int8_t>, input_element) == 0);
@@ -108,7 +111,9 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
   dl::base::ArgsType<int8_t> flash_args =
     make_args(kFlashOutput, kFlashFilter.values);
 
+  g_stage.store(AG_TIE_SELFTEST_STAGE_RAM, std::memory_order_release);
   dl_tie728_s8_conv2d_11cn(kRamOutput, kInput, &ram_args);
+  g_stage.store(AG_TIE_SELFTEST_STAGE_FLASH, std::memory_order_release);
   dl_tie728_s8_conv2d_11cn(kFlashOutput, kInput, &flash_args);
 
   int8_t expected = ag_tie_selftest_scalar_lane(
@@ -117,10 +122,21 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
   bool flash_pass = ag_tie_selftest_all_equal(kFlashOutput, expected);
   enum ag_tie_selftest_classification classification =
     ag_tie_selftest_classify(ram_pass, flash_pass);
+  uint8_t result = kResultValid;
 
-  g_ram_pass = ram_pass;
-  g_flash_pass = flash_pass;
-  g_result_valid = true;
+  if (ram_pass)
+    {
+      result |= kResultRamPass;
+    }
+
+  if (flash_pass)
+    {
+      result |= kResultFlashPass;
+    }
+
+  g_result.store(result, std::memory_order_release);
+  g_stage.store(AG_TIE_SELFTEST_STAGE_COMPLETE,
+                std::memory_order_release);
 
   std::fprintf(stderr,
                "agentguard: TIE_SELFTEST in=%p ram_filter=%p "
@@ -140,15 +156,26 @@ extern "C" void ag_espdl_tie_conv_selftest_run_once(void)
                ag_tie_selftest_classification_name(classification));
 }
 
+extern "C" uint8_t ag_espdl_tie_conv_selftest_get_stage(void)
+{
+  return g_stage.load(std::memory_order_acquire);
+}
+
 extern "C" bool
 ag_espdl_tie_conv_selftest_get_result(bool *ram_pass, bool *flash_pass)
 {
-  if (!g_result_valid || ram_pass == nullptr || flash_pass == nullptr)
+  if (ram_pass == nullptr || flash_pass == nullptr)
     {
       return false;
     }
 
-  *ram_pass = g_ram_pass;
-  *flash_pass = g_flash_pass;
+  uint8_t result = g_result.load(std::memory_order_acquire);
+  if ((result & kResultValid) == 0)
+    {
+      return false;
+    }
+
+  *ram_pass = (result & kResultRamPass) != 0;
+  *flash_pass = (result & kResultFlashPass) != 0;
   return true;
 }

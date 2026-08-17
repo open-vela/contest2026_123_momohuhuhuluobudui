@@ -507,6 +507,8 @@ static void *ag_display_worker_main(void *argument)
           status.camera_phase = g_agentguard_camera_phase;
         }
 #ifdef CONFIG_AGENTGUARD_ESP_DL
+      status.tie_selftest_stage =
+        ag_espdl_tie_conv_selftest_get_stage();
       status.tie_selftest_valid =
         ag_espdl_tie_conv_selftest_get_result(&status.tie_ram_pass,
                                               &status.tie_flash_pass);
@@ -881,10 +883,6 @@ static int ag_run(void)
       usleep(AG_CAMERA_RESTART_DELAY_US);
     }
 
-#ifdef CONFIG_AGENTGUARD_ESP_DL
-  ag_espdl_tie_conv_selftest_run_once();
-#endif
-
   while (ag_display_worker_start(&display_worker, &display) < 0)
     {
       fprintf(stderr, "agentguard: LCD worker allocation failed; retrying\n");
@@ -897,6 +895,10 @@ static int ag_run(void)
    */
 
   usleep(AG_DISPLAY_REFRESH_US * 2);
+
+#ifdef CONFIG_AGENTGUARD_ESP_DL
+  ag_espdl_tie_conv_selftest_run_once();
+#endif
 
   /* The OV2640 sensor setup performs its transfers through I2C0.  The
    * normal board bring-up initializes and pins that controller before the

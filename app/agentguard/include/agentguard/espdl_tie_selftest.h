@@ -20,6 +20,14 @@ enum ag_tie_selftest_classification
   AG_TIE_RAM_FAIL_FLASH_PASS
 };
 
+enum ag_tie_selftest_stage
+{
+  AG_TIE_SELFTEST_STAGE_IDLE = 0,
+  AG_TIE_SELFTEST_STAGE_RAM = 40,
+  AG_TIE_SELFTEST_STAGE_FLASH = 41,
+  AG_TIE_SELFTEST_STAGE_COMPLETE = 42
+};
+
 int8_t ag_tie_selftest_scalar_lane(const int8_t input[16],
                                    const int8_t filter[256], size_t lane);
 bool ag_tie_selftest_all_equal(const int8_t output[16], int8_t expected);
@@ -29,6 +37,7 @@ const char *ag_tie_selftest_classification_name(
   enum ag_tie_selftest_classification value);
 bool ag_tie_selftest_claim(bool *already_ran);
 void ag_espdl_tie_conv_selftest_run_once(void);
+uint8_t ag_espdl_tie_conv_selftest_get_stage(void);
 bool ag_espdl_tie_conv_selftest_get_result(bool *ram_pass,
                                            bool *flash_pass);
 

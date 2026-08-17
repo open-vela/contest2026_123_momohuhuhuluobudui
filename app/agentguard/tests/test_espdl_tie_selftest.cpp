@@ -8,6 +8,11 @@
 #include <cstdint>
 #include <cstring>
 
+static_assert(AG_TIE_SELFTEST_STAGE_IDLE == 0);
+static_assert(AG_TIE_SELFTEST_STAGE_RAM == 40);
+static_assert(AG_TIE_SELFTEST_STAGE_FLASH == 41);
+static_assert(AG_TIE_SELFTEST_STAGE_COMPLETE == 42);
+
 int main()
 {
   alignas(16) int8_t input[16];
