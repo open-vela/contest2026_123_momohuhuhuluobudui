@@ -312,78 +312,135 @@ feat: display LCD write timing diagnostics
 
 ---
 
-### Task 3: Coherent SPI DMA Integration
+### Task 3: Testable LCD Transfer Boundary
 
 **Files:**
-- Create: `app/agentguard/tests/test_lcd_dma_contract.py`
+- Create: `app/agentguard/include/agentguard/lcd_transfer.h`
+- Create: `app/agentguard/src/lcd_transfer.c`
+- Create: `app/agentguard/tests/test_lcd_transfer.c`
+- Modify: `app/agentguard/tests/Makefile`
+- Modify: `app/agentguard/Makefile`
+
+**Interfaces:**
+- Consumes: Task 1 LCD timing state.
+- Produces: `struct ag_lcd_transfer_ops` callbacks for monotonic time, cache clean, and hardware submission plus an opaque context.
+- Produces: `int ag_lcd_transfer_run(const struct ag_lcd_transfer_ops *ops, uintptr_t buffer_start, size_t buffer_size, struct ag_lcd_timing_state *timing)`.
+- Guarantees: reads the start clock, cleans `[buffer_start, buffer_start + buffer_size)`, submits once, reads the finish clock after successful submission, and publishes timing only when all required operations succeed with a non-backward clock.
+
+- [ ] **Step 1: Write the failing real transfer-sequencing test**
+
+Create a fake hardware context whose callbacks append `READ`, `CLEAN`, and
+`SUBMIT` to an event array. Test these literal behaviors:
+
+```c
+assert(ag_lcd_transfer_run(&ops, 0x1000, 153600, &timing) == 0);
+assert(context.event_count == 4);
+assert(context.events[0] == EVENT_READ);
+assert(context.events[1] == EVENT_CLEAN);
+assert(context.events[2] == EVENT_SUBMIT);
+assert(context.events[3] == EVENT_READ);
+assert(context.clean_start == 0x1000);
+assert(context.clean_end == 0x26800);
+assert(timing.valid);
+assert(timing.write_ms == 31);
+```
+
+Then set the fake submit result to `-1`; assert the event sequence stops after
+`READ/CLEAN/SUBMIT` and timing becomes invalid. Separately make the first clock
+read fail and use a backward `200/199` clock pair; each case must still submit
+the frame but leave timing invalid.
+
+Add `test_lcd_transfer` to `TARGETS`, link it with `lcd_transfer.c` and
+`lcd_timing.c`, and run it after `test_lcd_timing`. Add
+`src/lcd_transfer.c` to the product `CSRCS`.
+
+- [ ] **Step 2: Run the focused test to verify RED**
+
+Run: `make -C app/agentguard/tests test_lcd_transfer`
+
+Expected: FAIL because `agentguard/lcd_transfer.h` does not exist.
+
+- [ ] **Step 3: Implement the minimal transfer boundary**
+
+Define callbacks with these exact signatures:
+
+```c
+bool (*read_ms)(void *context, uint64_t *value);
+void (*clean)(void *context, uintptr_t start, uintptr_t end);
+int (*submit)(void *context);
+```
+
+`ag_lcd_transfer_run()` validates all pointers, reads the start clock, always
+cleans and submits once, returns immediately with invalid timing on a failed
+submission, then reads the finish clock and calls `ag_lcd_timing_update()` only
+when both clock reads succeeded. Missing operations return `-1` and invalidate
+timing. The hardware submit return value is returned unchanged.
+
+- [ ] **Step 4: Verify GREEN and regression**
+
+Run: `make -C app/agentguard/tests clean test_lcd_transfer && app/agentguard/tests/test_lcd_transfer`
+
+Expected: `AgentGuard LCD transfer tests: PASS`.
+
+Run: `make -C app/agentguard/tests test`
+
+Expected: all eleven compiled tests and the no-stdio contract pass.
+
+- [ ] **Step 5: Commit the transfer boundary**
+
+Stage only the five Task 3 files and commit:
+
+```text
+feat: add coherent LCD transfer boundary
+```
+
+---
+
+### Task 4: SPI DMA Configuration and Display Integration
+
+**Files:**
+- Create: `app/agentguard/tests/test_lcd_dma_config.py`
 - Modify: `app/agentguard/tests/Makefile`
 - Modify: `tools/apply_agentguard_config.sh`
 - Modify: `app/agentguard/src/agentguard_main.c`
 
 **Interfaces:**
-- Consumes: Task 1 `ag_lcd_timing_reset()`, `ag_lcd_timing_invalidate()`, and `ag_lcd_timing_update()`.
-- Consumes: Task 2 `lcd_write_valid` and `lcd_write_ms` UI fields.
-- Changes: `ag_display_frame()` accepts `struct ag_lcd_timing_state *lcd_timing`, performs cache maintenance, measures the submitted ioctl, and invalidates timing on measurement or ioctl failure.
-- Produces: reproducible SPI DMA Kconfig commands and a source-order contract ensuring cache clean occurs before LCD submission.
+- Consumes: Task 2 LCD UI fields and Task 3 transfer boundary.
+- Produces: reproducible SPI DMA values by executing the real product configuration script.
+- Adapts: NuttX `clock_gettime`, `up_clean_dcache`, and `LCDDEVIO_PUTAREA` to `struct ag_lcd_transfer_ops`.
 
-- [ ] **Step 1: Add the failing configuration and cache-order contract**
+- [ ] **Step 1: Add the failing configuration behavior test**
 
-Create `test_lcd_dma_contract.py`:
+Create `test_lcd_dma_config.py`. In a `tempfile.TemporaryDirectory()`, build
+the layout `openvela/contest/tools`, copy the real configuration script there,
+create a minimal `openvela/nuttx/.config`, and install a fake executable
+`openvela/prebuilts/build-tools/linux-x86_64/bin/kconfig-tweak` that implements
+`--enable`, `--disable`, `--set-val`, and `--set-str` by updating that temporary
+`.config`. Add a minimal NuttX Makefile whose `include/nuttx/config.h` target
+succeeds, then run the copied script with `subprocess.run(..., check=True)`.
+
+Parse the resulting `.config` and assert these exact effects:
 
 ```python
-#!/usr/bin/env python3
-
-from pathlib import Path
-
-
-TEST_DIR = Path(__file__).resolve().parent
-REPO_ROOT = TEST_DIR.parents[2]
-CONFIG_SCRIPT = REPO_ROOT / "tools" / "apply_agentguard_config.sh"
-MAIN_SOURCE = TEST_DIR.parent / "src" / "agentguard_main.c"
-
-
-def main() -> None:
-    config = CONFIG_SCRIPT.read_text(encoding="utf-8")
-    source = MAIN_SOURCE.read_text(encoding="utf-8")
-
-    required_config = (
-        '"$tweak" --file "$config_file" --enable ESP32S3_SPI_DMA',
-        '"$tweak" --file "$config_file" --set-val '
-        'ESP32S3_SPI_DMA_BUFSIZE 2048',
-        '"$tweak" --file "$config_file" --set-val '
-        'ESP32S3_SPI_DMATHRESHOLD 64',
-    )
-    missing = [entry for entry in required_config if entry not in config]
-    assert not missing, f"missing SPI DMA configuration: {missing}"
-
-    clean = "up_clean_dcache((uintptr_t)pixels,"
-    submit = "ioctl(display->fd, LCDDEVIO_PUTAREA, (uintptr_t)&area)"
-    clean_at = source.index(clean)
-    submit_at = source.index(submit, clean_at)
-    assert clean_at < submit_at
-    assert "ag_lcd_timing_update(lcd_timing" in source
-    assert "ag_lcd_timing_invalidate(lcd_timing" in source
-
-    print("AgentGuard LCD DMA contract: PASS")
-
-
-if __name__ == "__main__":
-    main()
+assert values["CONFIG_ESP32S3_SPI_DMA"] == "y"
+assert values["CONFIG_ESP32S3_SPI_DMA_BUFSIZE"] == "2048"
+assert values["CONFIG_ESP32S3_SPI_DMATHRESHOLD"] == "64"
 ```
 
-Invoke `python3 test_lcd_dma_contract.py` after the existing no-stdio contract
-in the `test` recipe.
+This test exercises the real shell script in an isolated filesystem; it does
+not search the script's source text. Add it after the no-stdio test in the
+`test` recipe.
 
-- [ ] **Step 2: Run the contract to verify RED**
+- [ ] **Step 2: Run the configuration test to verify RED**
 
-Run: `python3 app/agentguard/tests/test_lcd_dma_contract.py`
+Run: `python3 app/agentguard/tests/test_lcd_dma_config.py`
 
-Expected: FAIL with `missing SPI DMA configuration` before source ordering is
-checked.
+Expected: FAIL because the resulting temporary `.config` does not contain
+`CONFIG_ESP32S3_SPI_DMA`.
 
-- [ ] **Step 3: Add reproducible SPI DMA configuration**
+- [ ] **Step 3: Add the minimal reproducible DMA configuration**
 
-After the camera XCLK configuration in `apply_agentguard_config.sh`, add:
+After the camera XCLK setting in `apply_agentguard_config.sh`, add:
 
 ```bash
 # The ST7789 frame is 115,200 bytes.  Polling SPI splits it into roughly 1,800
@@ -394,86 +451,42 @@ After the camera XCLK configuration in `apply_agentguard_config.sh`, add:
 "$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMATHRESHOLD 64
 ```
 
-Run the contract again.
+Run: `python3 app/agentguard/tests/test_lcd_dma_config.py`
 
-Expected: it advances past the configuration assertions and FAILs because
-`up_clean_dcache()` is absent.
+Expected: `AgentGuard LCD DMA config test: PASS`.
 
-- [ ] **Step 4: Integrate worker-owned timing, cache clean, and LCD submission**
+- [ ] **Step 4: Adapt the tested transfer boundary to NuttX**
 
-Include `agentguard/lcd_timing.h` and `<nuttx/cache.h>`. Add this clock helper
-without changing the existing `ag_now_ms()` behavior:
-
-```c
-static bool ag_read_monotonic_ms(uint64_t *value)
-{
-  struct timespec now;
-
-  if (value == NULL || clock_gettime(CLOCK_MONOTONIC, &now) < 0 ||
-      now.tv_sec < 0)
-    {
-      return false;
-    }
-
-  *value = (uint64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
-  return true;
-}
-```
-
-Extend `ag_display_frame()` with an LCD timing-state parameter. After the
-visibility/area calculation and immediately before the ioctl, perform:
+Include `agentguard/lcd_timing.h`, `agentguard/lcd_transfer.h`, and
+`<nuttx/cache.h>`. Add a small submit context containing the display and
+`lcddev_area_s` pointers. Its three adapters must:
 
 ```c
-uint64_t started_ms = 0;
-uint64_t finished_ms = 0;
-bool have_started;
-bool have_finished;
-int result;
-
-have_started = ag_read_monotonic_ms(&started_ms);
-up_clean_dcache((uintptr_t)pixels,
-                (uintptr_t)pixels + AG_FRAME_BYTES);
-result = ioctl(display->fd, LCDDEVIO_PUTAREA, (uintptr_t)&area);
-have_finished = ag_read_monotonic_ms(&finished_ms);
-
-if (result < 0)
-  {
-    ag_lcd_timing_invalidate(lcd_timing);
-    fprintf(stderr, "agentguard: LCD preview stopped: %d\n", errno);
-    ag_display_close(display);
-    return;
-  }
-
-if (!have_started || !have_finished ||
-    !ag_lcd_timing_update(lcd_timing, started_ms, finished_ms))
-  {
-    ag_lcd_timing_invalidate(lcd_timing);
-  }
+read_ms: call clock_gettime(CLOCK_MONOTONIC), reject failure/negative seconds,
+         and return milliseconds through the output pointer
+clean:   call up_clean_dcache(start, end)
+submit:  call ioctl(display->fd, LCDDEVIO_PUTAREA, (uintptr_t)area)
 ```
 
-Declare `struct ag_lcd_timing_state lcd_timing` in
-`ag_display_worker_main()` and reset it once before the infinite loop. After
-copying `worker->status` but before UI rendering, publish only the previous
-sample into the local status copy:
+Extend `ag_display_frame()` with `struct ag_lcd_timing_state *lcd_timing`,
+construct the operations/context after the area is complete, and call:
 
 ```c
-status.lcd_write_valid = lcd_timing.valid;
-status.lcd_write_ms = lcd_timing.write_ms;
+result = ag_lcd_transfer_run(&ops, (uintptr_t)pixels, AG_FRAME_BYTES,
+                             lcd_timing);
 ```
 
-Pass `&lcd_timing` to `ag_display_frame()`. This ordering guarantees frame N
-renders the duration of frame N-1, then the completed draw buffer is cleaned,
-submitted, and measured for frame N+1.
+On a negative result, preserve the existing error message and close behavior.
+Declare/reset the timing state once in `ag_display_worker_main()`, copy its
+previous `valid/write_ms` into the local UI status before rendering, and pass
+it to `ag_display_frame()`. Frame N therefore renders frame N-1's duration.
 
-- [ ] **Step 5: Verify GREEN and complete host regression**
-
-Run: `python3 app/agentguard/tests/test_lcd_dma_contract.py`
-
-Expected: `AgentGuard LCD DMA contract: PASS`.
+- [ ] **Step 5: Verify integration and full host regression**
 
 Run: `make -C app/agentguard/tests clean test`
 
-Expected: all ten compiled tests plus both Python contracts pass.
+Expected: all eleven compiled tests plus the no-stdio and real configuration
+behavior tests pass.
 
 Run:
 
@@ -482,14 +495,14 @@ git --git-dir=/home/yhx/Desktop/openvela/.repo/projects/contest2026_123_momohuhu
   --work-tree=/home/yhx/Desktop/openvela/contest2026_123_momohuhuhuluobudui \
   diff --check -- tools/apply_agentguard_config.sh \
   app/agentguard/src/agentguard_main.c app/agentguard/tests/Makefile \
-  app/agentguard/tests/test_lcd_dma_contract.py
+  app/agentguard/tests/test_lcd_dma_config.py
 ```
 
 Expected: no output and exit status 0.
 
 - [ ] **Step 6: Commit coherent DMA integration**
 
-Stage only the four Task 3 files and commit:
+Stage only the four Task 4 files and commit:
 
 ```text
 feat: accelerate LCD writes with coherent SPI DMA
@@ -497,14 +510,14 @@ feat: accelerate LCD writes with coherent SPI DMA
 
 ---
 
-### Task 4: Target Configuration, Build, Flash, and Physical Validation
+### Task 5: Target Configuration, Build, Flash, and Physical Validation
 
 **Files:**
 - Verify only: `/home/yhx/Desktop/openvela/nuttx/.config`
 - Verify only: `/home/yhx/Desktop/openvela/nuttx/nuttx.bin`
 
 **Interfaces:**
-- Consumes: the committed configuration script and complete AgentGuard target sources from Tasks 1-3.
+- Consumes: the committed configuration script and complete AgentGuard target sources from Tasks 1-4.
 - Produces: a hash-verified firmware image and physical `D` measurements; no source file is modified in this task.
 
 - [ ] **Step 1: Recheck workspace identity and apply product configuration**
@@ -546,7 +559,8 @@ Expected: exactly the three requested values are printed.
 
 Run: `make -C app/agentguard/tests clean test`
 
-Expected: all ten compiled tests and both source contracts pass.
+Expected: all eleven compiled tests plus the no-stdio and real configuration
+behavior tests pass.
 
 Activate `/home/yhx/Desktop/openvela/myenv/bin/activate`, then run:
 
