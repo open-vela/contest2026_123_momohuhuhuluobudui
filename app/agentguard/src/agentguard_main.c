@@ -4,6 +4,7 @@
 
 #include "agentguard/core.h"
 #include "agentguard/display_ui.h"
+#include "agentguard/frame_timing.h"
 #include "agentguard/storage.h"
 #include "agentguard/vision.h"
 #ifdef CONFIG_AGENTGUARD_ESP_DL
@@ -326,8 +327,10 @@ static int ag_next_frame(struct ag_video *video,
 }
 
 static int ag_video_restart(struct ag_video *video,
-                            struct ag_display_worker *display_worker)
+                            struct ag_display_worker *display_worker,
+                            struct ag_frame_timing_state *frame_timing)
 {
+  ag_frame_timing_reset(frame_timing);
   ag_video_close(video);
   usleep(AG_CAMERA_RESTART_DELAY_US);
   return ag_video_open(video, display_worker);
@@ -870,8 +873,11 @@ static int ag_run(void)
 #endif
   struct ag_camera_watchdog watchdog;
   struct ag_display_worker display_worker;
+  struct ag_frame_timing_state frame_timing;
   struct v4l2_buffer frame;
   pthread_t watchdog_thread;
+  uint64_t dequeue_started_ms;
+  uint64_t dequeue_finished_ms;
   bool was_pressed = false;
   uint32_t frame_sequence = 0;
   int led_fd;
@@ -958,15 +964,18 @@ static int ag_run(void)
   ag_vision_init(&vision);
   ag_default_config(&config);
   ag_init(&state);
+  ag_frame_timing_reset(&frame_timing);
 
   for (;;)
     {
+      dequeue_started_ms = ag_now_ms();
       if (ag_next_frame(&video, &watchdog, &frame) < 0)
         {
           fprintf(stderr,
                   "agentguard: camera frame timeout/error %d; restarting\n",
                   errno);
-          if (ag_video_restart(&video, &display_worker) < 0)
+          if (ag_video_restart(&video, &display_worker,
+                               &frame_timing) < 0)
             {
               fprintf(stderr, "agentguard: camera restart failed; retrying\n");
               usleep(AG_CAMERA_RESTART_DELAY_US);
@@ -978,6 +987,13 @@ static int ag_run(void)
 
           continue;
         }
+
+      dequeue_finished_ms = ag_now_ms();
+      ag_frame_timing_update(&frame_timing,
+                             dequeue_started_ms,
+                             dequeue_finished_ms,
+                             frame.timestamp.tv_sec,
+                             frame.timestamp.tv_usec);
 
       if (ag_vision_process_rgb565(&vision,
                                    (uint16_t *)frame.m.userptr,
@@ -997,6 +1013,10 @@ static int ag_run(void)
           ui_status.camera_phase = 7;
           ui_status.face_count = vision_result.face_count;
           ui_status.posture_score = vision_result.posture_score;
+          ui_status.frame_timing_valid = frame_timing.valid;
+          ui_status.capture_interval_ms = frame_timing.capture_interval_ms;
+          ui_status.dequeue_wait_ms = frame_timing.dequeue_wait_ms;
+          ui_status.loop_interval_ms = frame_timing.loop_interval_ms;
 #ifdef CONFIG_AGENTGUARD_ESP_DL
           ag_vision_model_get_diagnostics(&model_diagnostics);
           ui_status.model_diagnostics_valid = model_diagnostics.valid != 0;
@@ -1051,7 +1071,7 @@ static int ag_run(void)
         {
           fprintf(stderr, "agentguard: VIDIOC_QBUF failed: %d; restarting\n",
                   errno);
-          ag_video_restart(&video, &display_worker);
+          ag_video_restart(&video, &display_worker, &frame_timing);
         }
     }
 

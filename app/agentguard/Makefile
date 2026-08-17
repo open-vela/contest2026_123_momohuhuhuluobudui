@@ -6,7 +6,8 @@ STACKSIZE = 16384
 MODULE    = $(CONFIG_LVX_USE_DEMO_CONTEST2026_123_AGENTGUARD)
 
 CFLAGS += -I$(APPDIR)/packages/demos/contest2026_123_agentguard/include
-CSRCS = src/core.c src/vision.c src/storage.c src/display_ui.c
+CSRCS = src/core.c src/vision.c src/storage.c src/display_ui.c \
+  src/frame_timing.c
 MAINSRC = src/agentguard_main.c
 
 ifeq ($(CONFIG_AGENTGUARD_ESP_DL),y)
