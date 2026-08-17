@@ -171,6 +171,70 @@ USB-JTAG OpenOCD 也无法使用，因为当前虚拟机没有 `/dev/bus/usb`；
 - TIE 卷积仍是主要故障，纯 C 路径虽有较合理信号但约 600 ms，且参考图最高分
   约 57、尚未完成最终阈值和真人精度验收。
 
+### 0.8 2026-08-17：TIE 阶段状态诊断固件已烧录，等待 LCD 读数
+
+为避免同步 TIE 自检阻塞时 LCD 停留在控制器默认白屏，启动顺序现已调整为：
+打开 LCD、创建并启动显示线程、等待两个刷新周期，然后才在 AgentGuard 主线程
+执行自检。两次直接 TIE 调用仍保留原任务和协处理器上下文，没有移动到新线程。
+
+跨线程状态使用 C++ 原子变量和 C 查询接口发布，LCD 详情行的含义为：
+
+```text
+D:40       RAM 权重 TIE 调用即将执行或尚未返回
+D:41       RAM 调用已返回，Flash/DROM 权重 TIE 调用即将执行或尚未返回
+D:42 K:xy  两次调用均返回；x/y 仍分别表示 RAM/Flash 是否通过
+```
+
+相关提交：
+
+```text
+bb70b98 docs: design TIE progress display
+ed64981 docs: plan TIE progress display
+00ea948 feat: display TIE self-test progress
+9bf559d fix: keep LCD alive during TIE diagnostic
+```
+
+TDD 证据：`test_display_ui` 在新接口未实现时以
+`implicit declaration of function ag_ui_format_tie_progress` 按预期失败；实现后
+8 个主机测试全部通过。目标消费路径在 getter 未实现时以 undefined reference
+按预期链接失败；加入原子实现后 NuttX 构建和镜像生成成功，且没有未解析的
+atomic helper 符号。
+
+ELF/objdump 证据：
+
+```text
+ag_display_worker_main                      0x420ba6e4
+ag_run                                      0x420ba9a0
+ag_espdl_tie_conv_selftest_run_once         0x420bed0c
+ag_espdl_tie_conv_selftest_get_stage        0x420befd0
+ag_espdl_tie_conv_selftest_get_result       0x420befe4
+RAM filter                                  0x3fc9a820
+Flash/DROM filter                           0x3c011750
+```
+
+反汇编确认显示线程先完成 `pthread_detach`，随后 `usleep` 两个刷新周期，再由
+`ag_run` 调用 `run_once`；显示线程每轮调用 `get_stage` 和 `get_result`。
+
+烧录镜像和最终复验构建证据：
+
+```text
+nuttx.bin size: 2085828 bytes（低于 LittleFS 0x300000 边界）
+已烧录镜像 SHA-256:
+756fec49859da1a0f72acee4b434fba6600d548ed3d95916398f85e215b8e237
+esptool image-info: ESP32-S3，checksum valid
+flash: Wrote 2085828 bytes；Hash of data verified
+烧录后的同源码复验构建 SHA-256:
+bc881b8bf0ff7346489005d38f413941e3763448eb4b7896101554c1f2d0f47b
+```
+
+NuttX 构建会更新镜像内的构建信息，因此同源码复验构建的二进制哈希不同。复验
+构建完成后，已烧录镜像通过写后校验；软件复位随后使 `/dev/ttyACM0` 按此板的
+已知限制消失，复验镜像未重复烧录。这不改变两次镜像所含的本轮源码，但后续若
+需要逐字节对齐当前磁盘产物，应在实体 RESET 恢复 USB 设备后再次烧录。
+
+当前仍不可宣称 TIE 已修复或人脸检测可用。软件烧录后的实体 LCD 读数尚未取得；
+下一步只需在必要时短按 RESET，并报告可见的 `D:`、`K:`（若有）和 `CAM:`。
+
 ## 1. 用户目标与约束
 
 - 硬件：ESP32-S3-EYE。
