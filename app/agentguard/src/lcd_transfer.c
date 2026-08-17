@@ -21,8 +21,8 @@ int ag_lcd_transfer_run(const struct ag_lcd_transfer_ops *ops,
       return -1;
     }
 
-  have_started = ops->read_ms(ops->context, &started_ms);
   ops->clean(ops->context, buffer_start, buffer_start + buffer_size);
+  have_started = ops->read_ms(ops->context, &started_ms);
   result = ops->submit(ops->context);
   if (result < 0)
     {

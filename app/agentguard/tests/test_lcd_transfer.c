@@ -84,8 +84,8 @@ int main(void)
   ag_lcd_timing_reset(&timing);
   assert(ag_lcd_transfer_run(&ops, 0x1000, 153600, &timing) == 0);
   assert(context.event_count == 4);
-  assert(context.events[0] == EVENT_READ);
-  assert(context.events[1] == EVENT_CLEAN);
+  assert(context.events[0] == EVENT_CLEAN);
+  assert(context.events[1] == EVENT_READ);
   assert(context.events[2] == EVENT_SUBMIT);
   assert(context.events[3] == EVENT_READ);
   assert(context.clean_start == 0x1000);
@@ -97,8 +97,8 @@ int main(void)
   context.submit_result = -1;
   assert(ag_lcd_transfer_run(&ops, 0x1000, 153600, &timing) == -1);
   assert(context.event_count == 3);
-  assert(context.events[0] == EVENT_READ);
-  assert(context.events[1] == EVENT_CLEAN);
+  assert(context.events[0] == EVENT_CLEAN);
+  assert(context.events[1] == EVENT_READ);
   assert(context.events[2] == EVENT_SUBMIT);
   assert(!timing.valid);
 

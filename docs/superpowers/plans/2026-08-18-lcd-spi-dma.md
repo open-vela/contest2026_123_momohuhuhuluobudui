@@ -325,7 +325,7 @@ feat: display LCD write timing diagnostics
 - Consumes: Task 1 LCD timing state.
 - Produces: `struct ag_lcd_transfer_ops` callbacks for monotonic time, cache clean, and hardware submission plus an opaque context.
 - Produces: `int ag_lcd_transfer_run(const struct ag_lcd_transfer_ops *ops, uintptr_t buffer_start, size_t buffer_size, struct ag_lcd_timing_state *timing)`.
-- Guarantees: reads the start clock, cleans `[buffer_start, buffer_start + buffer_size)`, submits once, reads the finish clock after successful submission, and publishes timing only when all required operations succeed with a non-backward clock.
+- Guarantees: cleans `[buffer_start, buffer_start + buffer_size)`, reads the start clock, submits once, reads the finish clock after successful submission, and publishes timing only when all required operations succeed with a non-backward clock.
 
 - [ ] **Step 1: Write the failing real transfer-sequencing test**
 
@@ -335,8 +335,8 @@ Create a fake hardware context whose callbacks append `READ`, `CLEAN`, and
 ```c
 assert(ag_lcd_transfer_run(&ops, 0x1000, 153600, &timing) == 0);
 assert(context.event_count == 4);
-assert(context.events[0] == EVENT_READ);
-assert(context.events[1] == EVENT_CLEAN);
+assert(context.events[0] == EVENT_CLEAN);
+assert(context.events[1] == EVENT_READ);
 assert(context.events[2] == EVENT_SUBMIT);
 assert(context.events[3] == EVENT_READ);
 assert(context.clean_start == 0x1000);
@@ -346,7 +346,7 @@ assert(timing.write_ms == 31);
 ```
 
 Then set the fake submit result to `-1`; assert the event sequence stops after
-`READ/CLEAN/SUBMIT` and timing becomes invalid. Separately make the first clock
+`CLEAN/READ/SUBMIT` and timing becomes invalid. Separately make the first clock
 read fail and use a backward `200/199` clock pair; each case must still submit
 the frame but leave timing invalid.
 
@@ -370,8 +370,8 @@ void (*clean)(void *context, uintptr_t start, uintptr_t end);
 int (*submit)(void *context);
 ```
 
-`ag_lcd_transfer_run()` validates all pointers, reads the start clock, always
-cleans and submits once, returns immediately with invalid timing on a failed
+`ag_lcd_transfer_run()` validates all pointers, always cleans, reads the start
+clock, and submits once, then returns immediately with invalid timing on a failed
 submission, then reads the finish clock and calls `ag_lcd_timing_update()` only
 when both clock reads succeeded. Missing operations return `-1` and invalidate
 timing. The hardware submit return value is returned unchanged.
