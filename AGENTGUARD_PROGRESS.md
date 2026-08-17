@@ -140,7 +140,7 @@ ROM 串口只能看到 simple-boot 段，NuttX 应用 `stderr` 不映射到当�
 USB-JTAG OpenOCD 也无法使用，因为当前虚拟机没有 `/dev/bus/usb`；不要浪费时间
 重复串口/JTAG读取，除非环境发生变化。
 
-### 0.6 下一步已提出但尚未实现的方案 A
+### 0.6 方案 A（历史计划，已在 0.8 实现）
 
 用户准备结束会话时，已提出以下推荐方案，但尚未获得该方案的最后确认、尚未
 改代码或烧录：
@@ -163,7 +163,7 @@ USB-JTAG OpenOCD 也无法使用，因为当前虚拟机没有 `/dev/bus/usb`；
 最小参考程序比较。如果 `D:41` 卡住，才说明 RAM 路径返回而 Flash/DROM 向量读取
 是故障边界。如果到 `D:42`，读取 `K:xy` 后按分类表继续。
 
-### 0.7 当前不可宣称事项
+### 0.7 当时不可宣称事项（由 0.8 和 0.9 更新）
 
 - 当前 LCD 是白屏，摄像头没有可见画面；不能宣称应用可用。
 - 尚未取得 RAM/Flash 自检的 `K:xy`，不能宣称已定位到 Flash 权重。
@@ -234,6 +234,68 @@ NuttX 构建会更新镜像内的构建信息，因此同源码复验构建的�
 
 当前仍不可宣称 TIE 已修复或人脸检测可用。软件烧录后的实体 LCD 读数尚未取得；
 下一步只需在必要时短按 RESET，并报告可见的 `D:`、`K:`（若有）和 `CAM:`。
+
+### 0.9 2026-08-17：移除自检完成后的阻塞 stdio，已烧录待复测
+
+0.8 诊断固件实体 RESET 后，用户报告：
+
+```text
+D:42 K:11 CAM:0
+```
+
+这组结果证明 RAM 与 Flash/DROM 权重的两次最小 TIE 卷积都返回，且 16 个输出
+均与标量参考一致。它否定了“直接 TIE 内核不返回”和“最小 Flash/DROM 权重读取
+错误”两个假设，但只覆盖该 16x16、1x1 最小夹具，不能据此宣称完整人脸模型的
+所有卷积都正确。
+
+`D:42` 发布后到 `run_once()` 返回之间唯一的实质路径是一串
+`lib_get_stream`、`fprintf`、`fputc` 和 `fwrite`。此前真机已经多次证明未就绪
+USB 控制台会阻塞同步输出；`CAM:0` 又证明主线程尚未进入随后的视频打开阶段。
+因此本轮根因定位为：**自检已经成功完成，但完成后的 stderr 向量日志阻塞了
+AgentGuard 主线程。**
+
+相关提交：
+
+```text
+31b4ca7 docs: design no-stdio TIE startup
+bfb84b3 docs: plan no-stdio TIE startup
+a788228 fix: remove blocking TIE startup logging
+```
+
+新增 `app/agentguard/tests/test_espdl_tie_no_stdio.py`，永久禁止启动自检源文件
+重新引入 `<cstdio>`、stderr/stdout、`fprintf`、`printf`、`fputc`、`fwrite` 或
+`print_vector`。该契约在修改前按预期失败并列出当前违例；移除日志后转为通过，
+并已加入完整主机测试配方。
+
+最终软件复验证据：
+
+```text
+8 个原有主机测试：PASS
+TIE no-stdio contract：PASS
+NuttX target build：PASS
+run_once_stdio_refs=0
+RAM filter:        0x3fc9a820
+Flash/DROM filter: 0x3c0116c0
+workspace checker: 全部 OK
+git diff --check: 无输出
+```
+
+已直接烧录捕获后的固定镜像，没有在烧录命令中触发重建：
+
+```text
+size: 2085572 bytes
+flashed SHA-256:
+c1996618c93c086338a368fd85a515ac6d5db2f63ed0a9352e04811eca4ab73c
+esptool image-info: ESP32-S3，checksum valid
+flash: Wrote 2085572 bytes；Hash of data verified
+post-flash verification-build SHA-256:
+200d34d5268a176cfccf7f9ee1b7cd89e150ac1b34d3a94897a8ee3b91813f4b
+```
+
+两个哈希不同仅因为 NuttX 复验构建更新了嵌入的构建信息；板上明确写入并校验的
+是 `c199...ab73c`。下一步实体 RESET 后应继续看到 `D:42 K:11`，同时
+`CAM:` 应推进到大于 0 的阶段。取得该读数前，不能宣称此启动阻塞已经完成真机
+闭环；即使 `CAM:` 推进，也仍不能宣称完整模型 TIE 数值或人脸检测精度正确。
 
 ## 1. 用户目标与约束
 
