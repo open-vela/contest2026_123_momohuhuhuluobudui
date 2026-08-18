@@ -102,6 +102,24 @@ int main(void)
                                         &status));
   assert(strcmp(diagnostics, "C:500 Q:430 L:500 D:31") == 0);
 
+  status.lcd_submit_timing_valid = true;
+  status.lcd_write_ms = 160;
+  status.lcd_submit_sum_ms = 145;
+  status.lcd_submit_max_ms = 80;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "D:160 S:145 M:80") == 0);
+
+  status.lcd_write_ms = 10000;
+  status.lcd_submit_sum_ms = UINT32_MAX;
+  status.lcd_submit_max_ms = 12345;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "D:9999+ S:9999+ M:9999+") == 0);
+
+  status.lcd_submit_timing_valid = false;
+  status.lcd_write_ms = 31;
+
   status.lcd_write_valid = false;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));

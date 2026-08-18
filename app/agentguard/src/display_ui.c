@@ -195,6 +195,23 @@ void ag_ui_format_lcd_timing(char *buffer, size_t buffer_size,
            capture_text, dequeue_text, loop_text, display_text);
 }
 
+static void ag_ui_format_lcd_submit_timing(char *buffer,
+                                           size_t buffer_size,
+                                           uint32_t display_ms,
+                                           uint32_t submit_sum_ms,
+                                           uint32_t submit_max_ms)
+{
+  char display_text[6];
+  char sum_text[6];
+  char max_text[6];
+
+  ag_ui_format_bounded_ms(display_text, sizeof(display_text), display_ms);
+  ag_ui_format_bounded_ms(sum_text, sizeof(sum_text), submit_sum_ms);
+  ag_ui_format_bounded_ms(max_text, sizeof(max_text), submit_max_ms);
+  snprintf(buffer, buffer_size, "D:%s S:%s M:%s",
+           display_text, sum_text, max_text);
+}
+
 void ag_ui_format_camera_phase(char *buffer, size_t buffer_size,
                                uint8_t phase)
 {
@@ -255,6 +272,15 @@ bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
   if (buffer == NULL || buffer_size == 0 || status == NULL)
     {
       return false;
+    }
+
+  if (status->lcd_write_valid && status->lcd_submit_timing_valid)
+    {
+      ag_ui_format_lcd_submit_timing(buffer, buffer_size,
+                                     status->lcd_write_ms,
+                                     status->lcd_submit_sum_ms,
+                                     status->lcd_submit_max_ms);
+      return true;
     }
 
   if (status->frame_timing_valid && status->model_diagnostics_valid &&

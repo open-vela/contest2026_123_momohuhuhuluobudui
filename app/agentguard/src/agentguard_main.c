@@ -109,6 +109,7 @@ struct ag_lcd_submit_context
 {
   struct ag_display *display;
   struct lcddev_area_s *area;
+  struct ag_lcd_submit_timing_state *submit_timing;
 };
 
 struct ag_camera_watchdog
@@ -507,6 +508,7 @@ static int ag_lcd_submit_chunk(void *argument, const uint16_t *pixels,
   struct ag_lcd_transfer_ops transfer_ops;
   struct ag_lcd_timing_state chunk_timing;
   struct lcddev_area_s *area = context->area;
+  int result;
 
   area->row_start = first_row;
   area->row_end = first_row + row_count - 1;
@@ -520,14 +522,17 @@ static int ag_lcd_submit_chunk(void *argument, const uint16_t *pixels,
   transfer_ops.submit = ag_lcd_submit;
   transfer_ops.context = context;
   ag_lcd_timing_reset(&chunk_timing);
-  return ag_lcd_transfer_run(&transfer_ops, (uintptr_t)pixels,
-                             (size_t)row_count * width * sizeof(*pixels),
-                             &chunk_timing);
+  result = ag_lcd_transfer_run(&transfer_ops, (uintptr_t)pixels,
+                               (size_t)row_count * width * sizeof(*pixels),
+                               &chunk_timing);
+  ag_lcd_submit_timing_record(context->submit_timing, &chunk_timing);
+  return result;
 }
 
 static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
                              uint16_t width, uint16_t height,
-                             struct ag_lcd_timing_state *lcd_timing)
+                             struct ag_lcd_timing_state *lcd_timing,
+                             struct ag_lcd_submit_timing_state *submit_timing)
 {
   struct lcddev_area_s area;
   struct ag_lcd_submit_context context;
@@ -556,9 +561,11 @@ static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
   memset(&area, 0, sizeof(area));
   context.display = display;
   context.area = &area;
+  context.submit_timing = submit_timing;
   bounce_ops.read_ms = ag_lcd_read_ms;
   bounce_ops.submit = ag_lcd_submit_chunk;
   bounce_ops.context = &context;
+  ag_lcd_submit_timing_reset(submit_timing);
   if (ag_lcd_bounce_frame(&bounce_ops, pixels, width, height,
                           source_x, source_y,
                           visible_width, visible_height,
@@ -576,11 +583,13 @@ static void *ag_display_worker_main(void *argument)
   struct ag_ui_status status;
   struct ag_face_box face;
   struct ag_lcd_timing_state lcd_timing;
+  struct ag_lcd_submit_timing_state submit_timing;
   uint64_t last_camera_ms;
   bool have_frame;
   unsigned int heartbeat = 0;
 
   ag_lcd_timing_reset(&lcd_timing);
+  ag_lcd_submit_timing_reset(&submit_timing);
 
   for (;;)
     {
@@ -610,6 +619,9 @@ static void *ag_display_worker_main(void *argument)
 
       status.lcd_write_valid = lcd_timing.valid;
       status.lcd_write_ms = lcd_timing.write_ms;
+      status.lcd_submit_timing_valid = submit_timing.valid;
+      status.lcd_submit_sum_ms = submit_timing.sum_ms;
+      status.lcd_submit_max_ms = submit_timing.max_ms;
 
       if (!have_frame)
         {
@@ -627,7 +639,7 @@ static void *ag_display_worker_main(void *argument)
                           worker->display->width,
                           worker->display->height, &status);
       ag_display_frame(worker->display, worker->draw_pixels,
-                       AG_WIDTH, AG_HEIGHT, &lcd_timing);
+                       AG_WIDTH, AG_HEIGHT, &lcd_timing, &submit_timing);
 
       usleep(AG_DISPLAY_REFRESH_US);
     }

@@ -43,3 +43,55 @@ bool ag_lcd_timing_update(struct ag_lcd_timing_state *state,
   state->valid = true;
   return true;
 }
+
+void ag_lcd_submit_timing_reset(struct ag_lcd_submit_timing_state *state)
+{
+  if (state != NULL)
+    {
+      state->sum_ms = 0;
+      state->max_ms = 0;
+      state->sample_count = 0;
+      state->valid = false;
+    }
+}
+
+bool ag_lcd_submit_timing_record(
+  struct ag_lcd_submit_timing_state *state,
+  const struct ag_lcd_timing_state *sample)
+{
+  if (state == NULL || sample == NULL)
+    {
+      return false;
+    }
+
+  if (state->sample_count == 0)
+    {
+      state->valid = sample->valid;
+    }
+  else if (!sample->valid)
+    {
+      state->valid = false;
+    }
+
+  state->sample_count++;
+  if (!sample->valid)
+    {
+      return false;
+    }
+
+  if (UINT32_MAX - state->sum_ms < sample->write_ms)
+    {
+      state->sum_ms = UINT32_MAX;
+    }
+  else
+    {
+      state->sum_ms += sample->write_ms;
+    }
+
+  if (sample->write_ms > state->max_ms)
+    {
+      state->max_ms = sample->write_ms;
+    }
+
+  return state->valid;
+}

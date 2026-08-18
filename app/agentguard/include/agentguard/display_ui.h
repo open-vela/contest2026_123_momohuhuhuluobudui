@@ -30,9 +30,12 @@ struct ag_ui_status
   uint32_t dequeue_wait_ms;
   uint32_t loop_interval_ms;
   uint32_t lcd_write_ms;
+  uint32_t lcd_submit_sum_ms;
+  uint32_t lcd_submit_max_ms;
   bool model_diagnostics_valid;
   bool frame_timing_valid;
   bool lcd_write_valid;
+  bool lcd_submit_timing_valid;
   bool calibrated;
   bool reminders_paused;
   bool privacy_enabled;
