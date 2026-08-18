@@ -9,6 +9,7 @@
 #include "agentguard/lcd_timing.h"
 #include "agentguard/lcd_transfer.h"
 #include "agentguard/storage.h"
+#include "agentguard/thread_priority.h"
 #include "agentguard/vision.h"
 #ifdef CONFIG_AGENTGUARD_ESP_DL
 #  include "agentguard/espdl_tie_selftest.h"
@@ -82,6 +83,7 @@ extern int board_i2c_init(void);
 #define AG_BUFFER_COUNT 3
 #define AG_PREVIEW_INTERVAL 1
 #define AG_DISPLAY_REFRESH_US 80000
+#define AG_DISPLAY_THREAD_PRIORITY 110
 #define AG_CAMERA_FRAME_TIMEOUT_MS 3000
 #define AG_CAMERA_RESTART_DELAY_US 250000
 #define AG_CAMERA_WATCHDOG_POLL_US 50000
@@ -650,7 +652,9 @@ static void *ag_display_worker_main(void *argument)
 static int ag_display_worker_start(struct ag_display_worker *worker,
                                    struct ag_display *display)
 {
+  pthread_attr_t attr;
   pthread_t thread;
+  int result;
 
   memset(worker, 0, sizeof(*worker));
   worker->display = display;
@@ -672,18 +676,34 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
 
   memset(worker->latest_pixels, 0, AG_FRAME_BYTES);
   memset(worker->draw_pixels, 0, AG_FRAME_BYTES);
-  if (pthread_mutex_init(&worker->lock, NULL) != 0 ||
-      pthread_create(&thread, NULL, ag_display_worker_main, worker) != 0)
+  if (ag_thread_attr_init_priority(&attr, AG_DISPLAY_THREAD_PRIORITY) != 0)
     {
-      free(worker->latest_pixels);
-      free(worker->draw_pixels);
-      worker->latest_pixels = NULL;
-      worker->draw_pixels = NULL;
-      return -1;
+      goto fail_buffers;
+    }
+
+  if (pthread_mutex_init(&worker->lock, NULL) != 0)
+    {
+      pthread_attr_destroy(&attr);
+      goto fail_buffers;
+    }
+
+  result = pthread_create(&thread, &attr, ag_display_worker_main, worker);
+  pthread_attr_destroy(&attr);
+  if (result != 0)
+    {
+      pthread_mutex_destroy(&worker->lock);
+      goto fail_buffers;
     }
 
   pthread_detach(thread);
   return OK;
+
+fail_buffers:
+  free(worker->latest_pixels);
+  free(worker->draw_pixels);
+  worker->latest_pixels = NULL;
+  worker->draw_pixels = NULL;
+  return -1;
 }
 
 static void ag_display_publish(struct ag_display_worker *worker,

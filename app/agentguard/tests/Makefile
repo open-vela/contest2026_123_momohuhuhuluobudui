@@ -6,6 +6,7 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 ROOT := ..
 TARGETS := test_core test_vision test_storage test_display_ui \
 	test_frame_timing test_lcd_timing test_lcd_transfer test_lcd_bounce \
+	test_thread_priority \
 	test_espdl_backend_config test_espdl_alloc_policy \
 	test_espdl_private_pool test_espdl_tie_selftest
 
@@ -50,6 +51,12 @@ test_lcd_bounce: test_lcd_bounce.c $(ROOT)/src/lcd_bounce.c \
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_lcd_bounce.c \
 		$(ROOT)/src/lcd_bounce.c $(ROOT)/src/lcd_timing.c -o $@
 
+test_thread_priority: test_thread_priority.c \
+	$(ROOT)/src/thread_priority.c \
+	$(ROOT)/include/agentguard/thread_priority.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_thread_priority.c \
+		$(ROOT)/src/thread_priority.c -pthread -o $@
+
 test_espdl_backend_config: test_espdl_backend_config.cpp \
 	$(ROOT)/third_party/esp-dl/dl/dl_define_private.hpp \
 	$(ROOT)/compat/espdl/sdkconfig.h
@@ -85,6 +92,7 @@ test: $(TARGETS)
 	./test_lcd_timing
 	./test_lcd_transfer
 	./test_lcd_bounce
+	./test_thread_priority
 	./test_espdl_backend_config
 	./test_espdl_alloc_policy
 	./test_espdl_private_pool
