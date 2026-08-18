@@ -5,6 +5,7 @@
 #include "agentguard/core.h"
 #include "agentguard/display_ui.h"
 #include "agentguard/frame_timing.h"
+#include "agentguard/lcd_bounce.h"
 #include "agentguard/lcd_timing.h"
 #include "agentguard/lcd_transfer.h"
 #include "agentguard/storage.h"
@@ -74,6 +75,10 @@ extern int board_i2c_init(void);
 #define AG_WIDTH 320
 #define AG_HEIGHT 240
 #define AG_FRAME_BYTES (AG_WIDTH * AG_HEIGHT * 2)
+#define AG_LCD_VISIBLE_WIDTH 240
+#define AG_LCD_BOUNCE_ROWS 8
+#define AG_LCD_BOUNCE_PIXELS \
+  (AG_LCD_VISIBLE_WIDTH * AG_LCD_BOUNCE_ROWS)
 #define AG_BUFFER_COUNT 3
 #define AG_PREVIEW_INTERVAL 1
 #define AG_DISPLAY_REFRESH_US 80000
@@ -82,6 +87,9 @@ extern int board_i2c_init(void);
 #define AG_CAMERA_WATCHDOG_POLL_US 50000
 #define AG_PC_CONNECT_TIMEOUT_MS 500
 #define AG_LOG_COMPACT_INTERVAL_MS (6ull * 60ull * 60ull * 1000ull)
+
+static uint16_t g_agentguard_lcd_bounce[AG_LCD_BOUNCE_PIXELS]
+  __attribute__((aligned(64)));
 
 struct ag_video
 {
@@ -491,13 +499,39 @@ static int ag_lcd_submit(void *argument)
                (uintptr_t)context->area);
 }
 
+static int ag_lcd_submit_chunk(void *argument, const uint16_t *pixels,
+                               uint16_t first_row, uint16_t row_count,
+                               uint16_t width)
+{
+  struct ag_lcd_submit_context *context = argument;
+  struct ag_lcd_transfer_ops transfer_ops;
+  struct ag_lcd_timing_state chunk_timing;
+  struct lcddev_area_s *area = context->area;
+
+  area->row_start = first_row;
+  area->row_end = first_row + row_count - 1;
+  area->col_start = 0;
+  area->col_end = width - 1;
+  area->stride = width * sizeof(*pixels);
+  area->data = (uint8_t *)pixels;
+
+  transfer_ops.read_ms = ag_lcd_read_ms;
+  transfer_ops.clean = ag_lcd_clean;
+  transfer_ops.submit = ag_lcd_submit;
+  transfer_ops.context = context;
+  ag_lcd_timing_reset(&chunk_timing);
+  return ag_lcd_transfer_run(&transfer_ops, (uintptr_t)pixels,
+                             (size_t)row_count * width * sizeof(*pixels),
+                             &chunk_timing);
+}
+
 static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
                              uint16_t width, uint16_t height,
                              struct ag_lcd_timing_state *lcd_timing)
 {
   struct lcddev_area_s area;
   struct ag_lcd_submit_context context;
-  struct ag_lcd_transfer_ops ops;
+  struct ag_lcd_bounce_ops bounce_ops;
   uint16_t visible_width;
   uint16_t visible_height;
   uint16_t source_x;
@@ -510,24 +544,26 @@ static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
     }
 
   visible_width = width < display->width ? width : display->width;
+  if (visible_width > AG_LCD_VISIBLE_WIDTH)
+    {
+      visible_width = AG_LCD_VISIBLE_WIDTH;
+    }
+
   visible_height = height < display->height ? height : display->height;
   source_x = (width - visible_width) / 2;
   source_y = (height - visible_height) / 2;
 
   memset(&area, 0, sizeof(area));
-  area.row_end = visible_height - 1;
-  area.col_end = visible_width - 1;
-  area.stride = width * sizeof(*pixels);
-  area.data = (uint8_t *)(pixels + source_y * width + source_x);
-
   context.display = display;
   context.area = &area;
-  ops.read_ms = ag_lcd_read_ms;
-  ops.clean = ag_lcd_clean;
-  ops.submit = ag_lcd_submit;
-  ops.context = &context;
-  if (ag_lcd_transfer_run(&ops, (uintptr_t)pixels, AG_FRAME_BYTES,
-                          lcd_timing) < 0)
+  bounce_ops.read_ms = ag_lcd_read_ms;
+  bounce_ops.submit = ag_lcd_submit_chunk;
+  bounce_ops.context = &context;
+  if (ag_lcd_bounce_frame(&bounce_ops, pixels, width, height,
+                          source_x, source_y,
+                          visible_width, visible_height,
+                          g_agentguard_lcd_bounce,
+                          AG_LCD_BOUNCE_ROWS, lcd_timing) < 0)
     {
       fprintf(stderr, "agentguard: LCD preview stopped: %d\n", errno);
       ag_display_close(display);
