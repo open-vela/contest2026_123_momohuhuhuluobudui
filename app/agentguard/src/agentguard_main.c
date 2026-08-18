@@ -76,7 +76,7 @@ extern int board_i2c_init(void);
 #define AG_HEIGHT 240
 #define AG_FRAME_BYTES (AG_WIDTH * AG_HEIGHT * 2)
 #define AG_LCD_VISIBLE_WIDTH 240
-#define AG_LCD_BOUNCE_ROWS 8
+#define AG_LCD_BOUNCE_ROWS 16
 #define AG_LCD_BOUNCE_PIXELS \
   (AG_LCD_VISIBLE_WIDTH * AG_LCD_BOUNCE_ROWS)
 #define AG_BUFFER_COUNT 3
