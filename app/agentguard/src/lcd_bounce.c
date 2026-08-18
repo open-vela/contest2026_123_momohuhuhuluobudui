@@ -3,7 +3,6 @@
 #include "agentguard/lcd_bounce.h"
 
 #include <stddef.h>
-#include <string.h>
 
 int ag_lcd_bounce_frame(const struct ag_lcd_bounce_ops *ops,
                         const uint16_t *source,
@@ -48,10 +47,15 @@ int ag_lcd_bounce_frame(const struct ag_lcd_bounce_ops *ops,
         {
           size_t source_offset =
             ((size_t)source_y + first_row + row) * source_stride + source_x;
+          uint16_t column;
 
-          memcpy(bounce + (size_t)row * visible_width,
-                 source + source_offset,
-                 (size_t)visible_width * sizeof(*bounce));
+          for (column = 0; column < visible_width; column++)
+            {
+              uint16_t pixel = source[source_offset + column];
+
+              bounce[(size_t)row * visible_width + column] =
+                (uint16_t)((pixel << 8) | (pixel >> 8));
+            }
         }
 
       result = ops->submit(ops->context, bounce, first_row, row_count,

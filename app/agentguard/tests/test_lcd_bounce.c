@@ -91,6 +91,10 @@ static void assert_invalid(const struct ag_lcd_bounce_ops *ops,
 
 int main(void)
 {
+  static const uint16_t primary_source[4] =
+    {0xf800, 0x07e0, 0x001f, 0xffff};
+  static const uint16_t primary_expected[4] =
+    {0x00f8, 0xe007, 0x1f00, 0xffff};
   static const uint16_t source[30] =
   {
      0,  1,  2,  3,  4,  5,
@@ -100,10 +104,11 @@ int main(void)
     40, 41, 42, 43, 44, 45
   };
   static const uint16_t first_expected[6] =
-    {11, 12, 13, 21, 22, 23};
+    {0x0b00, 0x0c00, 0x0d00, 0x1500, 0x1600, 0x1700};
   static const uint16_t second_expected[6] =
-    {31, 32, 33, 41, 42, 43};
-  static const uint16_t final_expected[3] = {31, 32, 33};
+    {0x1f00, 0x2000, 0x2100, 0x2900, 0x2a00, 0x2b00};
+  static const uint16_t final_expected[3] =
+    {0x1f00, 0x2000, 0x2100};
   struct ag_lcd_timing_state timing;
   struct test_context context;
   struct ag_lcd_bounce_ops ops =
@@ -113,6 +118,14 @@ int main(void)
     .context = &context
   };
   uint16_t bounce[6];
+
+  test_context_reset(&context, 50, 51);
+  ag_lcd_timing_reset(&timing);
+  assert(ag_lcd_bounce_frame(&ops, primary_source, 4, 1, 0, 0, 4, 1,
+                             bounce, 1, &timing) == 0);
+  assert(context.submit_count == 1);
+  assert(memcmp(context.snapshots[0], primary_expected,
+                sizeof(primary_expected)) == 0);
 
   test_context_reset(&context, 100, 135);
   ag_lcd_timing_reset(&timing);
