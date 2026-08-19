@@ -3,6 +3,8 @@
 #include <nuttx/config.h>
 
 #include "agentguard/core.h"
+#include "agentguard/display_preview.h"
+#include "agentguard/display_regions.h"
 #include "agentguard/display_ui.h"
 #include "agentguard/frame_timing.h"
 #include "agentguard/lcd_bounce.h"
@@ -76,12 +78,27 @@ extern int board_i2c_init(void);
 #define AG_WIDTH 320
 #define AG_HEIGHT 240
 #define AG_FRAME_BYTES (AG_WIDTH * AG_HEIGHT * 2)
-#define AG_LCD_VISIBLE_WIDTH 240
+#define AG_LCD_WIDTH 240
+#define AG_LCD_HEIGHT 240
+#define AG_LCD_FRAME_PIXELS (AG_LCD_WIDTH * AG_LCD_HEIGHT)
+#define AG_LCD_FRAME_BYTES (AG_LCD_FRAME_PIXELS * 2)
+#define AG_PREVIEW_WIDTH 200
+#define AG_PREVIEW_HEIGHT 150
+#define AG_PREVIEW_X ((AG_LCD_WIDTH - AG_PREVIEW_WIDTH) / 2)
+#define AG_PREVIEW_Y \
+  (AG_UI_HEADER_HEIGHT + \
+   (AG_LCD_HEIGHT - AG_UI_HEADER_HEIGHT - AG_UI_FOOTER_HEIGHT - \
+    AG_PREVIEW_HEIGHT) / 2)
+#define AG_LCD_HEADER_PIXELS (AG_LCD_WIDTH * AG_UI_HEADER_HEIGHT)
+#define AG_LCD_FOOTER_PIXELS (AG_LCD_WIDTH * AG_UI_FOOTER_HEIGHT)
+#define AG_LCD_HUD_PIXELS (AG_LCD_HEADER_PIXELS + AG_LCD_FOOTER_PIXELS)
+/* Keep this allocation larger than the remaining internal DRAM region so
+ * NuttX places the non-DMA HUD history in external RAM. */
+#define AG_LCD_HUD_ALLOCATION_BYTES (64 * 1024)
 #define AG_LCD_BOUNCE_ROWS 16
 #define AG_LCD_BOUNCE_PIXELS \
-  (AG_LCD_VISIBLE_WIDTH * AG_LCD_BOUNCE_ROWS)
+  (AG_LCD_WIDTH * AG_LCD_BOUNCE_ROWS)
 #define AG_BUFFER_COUNT 3
-#define AG_PREVIEW_INTERVAL 1
 #define AG_DISPLAY_REFRESH_US 80000
 #define AG_DISPLAY_THREAD_PRIORITY 110
 #define AG_CAMERA_FRAME_TIMEOUT_MS 3000
@@ -92,6 +109,14 @@ extern int board_i2c_init(void);
 
 static uint16_t g_agentguard_lcd_bounce[AG_LCD_BOUNCE_PIXELS]
   __attribute__((aligned(64)));
+
+static const struct ag_preview_area g_agentguard_preview_area =
+{
+  .x = AG_PREVIEW_X,
+  .y = AG_PREVIEW_Y,
+  .width = AG_PREVIEW_WIDTH,
+  .height = AG_PREVIEW_HEIGHT
+};
 
 struct ag_video
 {
@@ -104,7 +129,6 @@ struct ag_display
   int fd;
   uint16_t width;
   uint16_t height;
-  unsigned int frame_count;
 };
 
 struct ag_lcd_submit_context
@@ -128,6 +152,9 @@ struct ag_display_worker
   struct ag_display *display;
   uint16_t *latest_pixels;
   uint16_t *draw_pixels;
+  uint16_t *screen_pixels;
+  uint16_t *hud_pixels;
+  struct ag_display_regions_state regions;
   struct ag_ui_status status;
   struct ag_face_box face;
   uint64_t last_camera_ms;
@@ -392,7 +419,7 @@ static int ag_display_open(struct ag_display *display)
     }
 
   if (video_info.fmt != FB_FMT_RGB16_565 || plane_info.bpp != 16 ||
-      video_info.xres == 0 || video_info.yres == 0)
+      video_info.xres != AG_LCD_WIDTH || video_info.yres != AG_LCD_HEIGHT)
     {
       fprintf(stderr, "agentguard: unsupported LCD format=%u bpp=%u\n",
               video_info.fmt, plane_info.bpp);
@@ -503,7 +530,8 @@ static int ag_lcd_submit(void *argument)
 }
 
 static int ag_lcd_submit_chunk(void *argument, const uint16_t *pixels,
-                               uint16_t first_row, uint16_t row_count,
+                               uint16_t first_column, uint16_t first_row,
+                               uint16_t row_count,
                                uint16_t width)
 {
   struct ag_lcd_submit_context *context = argument;
@@ -514,8 +542,8 @@ static int ag_lcd_submit_chunk(void *argument, const uint16_t *pixels,
 
   area->row_start = first_row;
   area->row_end = first_row + row_count - 1;
-  area->col_start = 0;
-  area->col_end = width - 1;
+  area->col_start = first_column;
+  area->col_end = first_column + width - 1;
   area->stride = width * sizeof(*pixels);
   area->data = (uint8_t *)pixels;
 
@@ -531,51 +559,70 @@ static int ag_lcd_submit_chunk(void *argument, const uint16_t *pixels,
   return result;
 }
 
-static void ag_display_frame(struct ag_display *display, uint16_t *pixels,
-                             uint16_t width, uint16_t height,
+static int ag_display_submit_area(void *argument, const uint16_t *pixels,
+                                  uint16_t stride,
+                                  uint16_t source_height,
+                                  uint16_t x, uint16_t y,
+                                  uint16_t width, uint16_t height)
+{
+  struct ag_lcd_submit_context *context = argument;
+  struct ag_lcd_bounce_ops bounce_ops;
+  struct ag_lcd_timing_state area_timing;
+
+  bounce_ops.read_ms = ag_lcd_read_ms;
+  bounce_ops.submit = ag_lcd_submit_chunk;
+  bounce_ops.context = context;
+  ag_lcd_timing_reset(&area_timing);
+  return ag_lcd_bounce_area(&bounce_ops, pixels, stride, source_height,
+                            x, y, x, y, width, height,
+                            g_agentguard_lcd_bounce,
+                            AG_LCD_BOUNCE_ROWS, &area_timing);
+}
+
+static void ag_display_frame(struct ag_display_worker *worker,
                              struct ag_lcd_timing_state *lcd_timing,
                              struct ag_lcd_submit_timing_state *submit_timing)
 {
   struct lcddev_area_s area;
   struct ag_lcd_submit_context context;
-  struct ag_lcd_bounce_ops bounce_ops;
-  uint16_t visible_width;
-  uint16_t visible_height;
-  uint16_t source_x;
-  uint16_t source_y;
+  struct ag_display_regions_ops regions_ops;
+  uint64_t started_ms = 0;
+  uint64_t finished_ms = 0;
+  bool have_started;
+  bool have_finished;
+  int result;
 
-  if (display->fd < 0 ||
-      display->frame_count++ % AG_PREVIEW_INTERVAL != 0)
+  if (worker->display->fd < 0)
     {
       return;
     }
 
-  visible_width = width < display->width ? width : display->width;
-  if (visible_width > AG_LCD_VISIBLE_WIDTH)
-    {
-      visible_width = AG_LCD_VISIBLE_WIDTH;
-    }
-
-  visible_height = height < display->height ? height : display->height;
-  source_x = (width - visible_width) / 2;
-  source_y = (height - visible_height) / 2;
-
   memset(&area, 0, sizeof(area));
-  context.display = display;
+  context.display = worker->display;
   context.area = &area;
   context.submit_timing = submit_timing;
-  bounce_ops.read_ms = ag_lcd_read_ms;
-  bounce_ops.submit = ag_lcd_submit_chunk;
-  bounce_ops.context = &context;
+  regions_ops.submit = ag_display_submit_area;
+  regions_ops.context = &context;
   ag_lcd_submit_timing_reset(submit_timing);
-  if (ag_lcd_bounce_frame(&bounce_ops, pixels, width, height,
-                          source_x, source_y,
-                          visible_width, visible_height,
-                          g_agentguard_lcd_bounce,
-                          AG_LCD_BOUNCE_ROWS, lcd_timing) < 0)
+  ag_lcd_timing_invalidate(lcd_timing);
+  have_started = ag_lcd_read_ms(NULL, &started_ms);
+  result = ag_display_regions_update(&regions_ops,
+                                     worker->screen_pixels,
+                                     AG_LCD_WIDTH, AG_LCD_HEIGHT,
+                                     &g_agentguard_preview_area,
+                                     AG_UI_HEADER_HEIGHT,
+                                     AG_UI_FOOTER_HEIGHT,
+                                     &worker->regions);
+  have_finished = ag_lcd_read_ms(NULL, &finished_ms);
+  if (result == 0 && have_started && have_finished)
+    {
+      ag_lcd_timing_update(lcd_timing, started_ms, finished_ms);
+    }
+
+  if (result < 0)
     {
       fprintf(stderr, "agentguard: LCD preview stopped: %d\n", errno);
-      ag_display_close(display);
+      ag_display_close(worker->display);
     }
 }
 
@@ -584,11 +631,12 @@ static void *ag_display_worker_main(void *argument)
   struct ag_display_worker *worker = argument;
   struct ag_ui_status status;
   struct ag_face_box face;
+  struct ag_face_box mapped_face;
   struct ag_lcd_timing_state lcd_timing;
   struct ag_lcd_submit_timing_state submit_timing;
   uint64_t last_camera_ms;
+  uint64_t now_ms;
   bool have_frame;
-  unsigned int heartbeat = 0;
 
   ag_lcd_timing_reset(&lcd_timing);
   ag_lcd_submit_timing_reset(&submit_timing);
@@ -627,21 +675,44 @@ static void *ag_display_worker_main(void *argument)
 
       if (!have_frame)
         {
-          memset(worker->draw_pixels, 0, AG_FRAME_BYTES);
           memset(&face, 0, sizeof(face));
         }
 
-      status.activity_on = (heartbeat++ & 1u) != 0;
+      memset(worker->screen_pixels, 0, AG_LCD_FRAME_BYTES);
+      if (have_frame &&
+          !ag_preview_scale_rgb565(worker->screen_pixels,
+                                   AG_LCD_WIDTH, AG_LCD_HEIGHT,
+                                   worker->draw_pixels,
+                                   AG_WIDTH, AG_HEIGHT,
+                                   &g_agentguard_preview_area))
+        {
+          have_frame = false;
+          memset(&face, 0, sizeof(face));
+        }
+
+      if (have_frame &&
+          !ag_preview_map_face(&face, AG_WIDTH, AG_HEIGHT,
+                               &g_agentguard_preview_area, &mapped_face))
+        {
+          memset(&face, 0, sizeof(face));
+        }
+      else if (have_frame)
+        {
+          face = mapped_face;
+        }
+
+      now_ms = ag_now_ms();
+      status.activity_on = ((now_ms / 500u) & 1u) != 0;
       status.camera_stale = !have_frame ||
-                            ag_now_ms() - last_camera_ms >=
+                            now_ms - last_camera_ms >=
                             AG_CAMERA_FRAME_TIMEOUT_MS;
-      ag_draw_face_box(worker->draw_pixels, AG_WIDTH, AG_HEIGHT,
+      ag_draw_face_box(worker->screen_pixels, AG_LCD_WIDTH, AG_LCD_HEIGHT,
                        &face, ag_ui_face_color(&status));
-      ag_ui_render_rgb565(worker->draw_pixels, AG_WIDTH, AG_HEIGHT,
+      ag_ui_render_rgb565(worker->screen_pixels,
+                          AG_LCD_WIDTH, AG_LCD_HEIGHT,
                           worker->display->width,
                           worker->display->height, &status);
-      ag_display_frame(worker->display, worker->draw_pixels,
-                       AG_WIDTH, AG_HEIGHT, &lcd_timing, &submit_timing);
+      ag_display_frame(worker, &lcd_timing, &submit_timing);
 
       usleep(AG_DISPLAY_REFRESH_US);
     }
@@ -665,17 +736,30 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
 
   worker->latest_pixels = memalign(32, AG_FRAME_BYTES);
   worker->draw_pixels = memalign(32, AG_FRAME_BYTES);
-  if (worker->latest_pixels == NULL || worker->draw_pixels == NULL)
+  worker->screen_pixels = memalign(32, AG_LCD_FRAME_BYTES);
+  worker->hud_pixels = memalign(32, AG_LCD_HUD_ALLOCATION_BYTES);
+  if (worker->latest_pixels == NULL || worker->draw_pixels == NULL ||
+      worker->screen_pixels == NULL || worker->hud_pixels == NULL)
     {
       free(worker->latest_pixels);
       free(worker->draw_pixels);
+      free(worker->screen_pixels);
+      free(worker->hud_pixels);
       worker->latest_pixels = NULL;
       worker->draw_pixels = NULL;
+      worker->screen_pixels = NULL;
+      worker->hud_pixels = NULL;
       return -1;
     }
 
   memset(worker->latest_pixels, 0, AG_FRAME_BYTES);
   memset(worker->draw_pixels, 0, AG_FRAME_BYTES);
+  memset(worker->screen_pixels, 0, AG_LCD_FRAME_BYTES);
+  memset(worker->hud_pixels, 0,
+         AG_LCD_HUD_PIXELS * sizeof(uint16_t));
+  worker->regions.header_snapshot = worker->hud_pixels;
+  worker->regions.footer_snapshot =
+    worker->hud_pixels + AG_LCD_HEADER_PIXELS;
   if (ag_thread_attr_init_priority(&attr, AG_DISPLAY_THREAD_PRIORITY) != 0)
     {
       goto fail_buffers;
@@ -701,8 +785,12 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
 fail_buffers:
   free(worker->latest_pixels);
   free(worker->draw_pixels);
+  free(worker->screen_pixels);
+  free(worker->hud_pixels);
   worker->latest_pixels = NULL;
   worker->draw_pixels = NULL;
+  worker->screen_pixels = NULL;
+  worker->hud_pixels = NULL;
   return -1;
 }
 

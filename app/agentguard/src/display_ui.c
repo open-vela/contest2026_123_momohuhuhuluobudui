@@ -16,8 +16,6 @@
 #define AG_UI_CYAN        0x07ff
 #define AG_UI_DARK_BLUE   0x0861
 #define AG_UI_DARK_GRAY   0x2104
-#define AG_UI_HEADER_H    18
-#define AG_UI_FOOTER_H    34
 
 static const uint8_t *ag_ui_glyph(char character)
 {
@@ -526,7 +524,7 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
   unsigned long seconds;
 
   if (pixels == NULL || status == NULL || view_width < 120 ||
-      view_height < AG_UI_HEADER_H + AG_UI_FOOTER_H ||
+      view_height < AG_UI_HEADER_HEIGHT + AG_UI_FOOTER_HEIGHT ||
       view_width > frame_width || view_height > frame_height)
     {
       return;
@@ -534,13 +532,13 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
 
   origin_x = (frame_width - view_width) / 2;
   origin_y = (frame_height - view_height) / 2;
-  footer_y = origin_y + view_height - AG_UI_FOOTER_H;
+  footer_y = origin_y + view_height - AG_UI_FOOTER_HEIGHT;
   accent = ag_ui_face_color(status);
 
   ag_ui_fill(pixels, frame_width, origin_x, origin_y, view_width,
-             AG_UI_HEADER_H, AG_UI_DARK_BLUE);
+             AG_UI_HEADER_HEIGHT, AG_UI_DARK_BLUE);
   ag_ui_fill(pixels, frame_width, origin_x, footer_y, view_width,
-             AG_UI_FOOTER_H, AG_UI_DARK_GRAY);
+             AG_UI_FOOTER_HEIGHT, AG_UI_DARK_GRAY);
   ag_ui_fill(pixels, frame_width, origin_x + 4, origin_y + 4, 10, 10,
              accent);
   if (status->activity_on)

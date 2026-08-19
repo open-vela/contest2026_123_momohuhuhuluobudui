@@ -19,6 +19,7 @@ struct test_context
   int submit_results[TEST_MAX_SUBMITS];
   size_t submit_count;
   uint16_t first_rows[TEST_MAX_SUBMITS];
+  uint16_t first_columns[TEST_MAX_SUBMITS];
   uint16_t row_counts[TEST_MAX_SUBMITS];
   uint16_t widths[TEST_MAX_SUBMITS];
   uint16_t snapshots[TEST_MAX_SUBMITS][TEST_MAX_PIXELS];
@@ -50,7 +51,8 @@ static bool test_read_ms(void *argument, uint64_t *value)
 }
 
 static int test_submit(void *argument, const uint16_t *pixels,
-                       uint16_t first_row, uint16_t row_count,
+                       uint16_t first_column, uint16_t first_row,
+                       uint16_t row_count,
                        uint16_t width)
 {
   struct test_context *context = argument;
@@ -60,6 +62,7 @@ static int test_submit(void *argument, const uint16_t *pixels,
   assert(index < TEST_MAX_SUBMITS);
   assert(pixel_count <= TEST_MAX_PIXELS);
   context->first_rows[index] = first_row;
+  context->first_columns[index] = first_column;
   context->row_counts[index] = row_count;
   context->widths[index] = width;
   memcpy(context->snapshots[index], pixels,
@@ -81,10 +84,10 @@ static void assert_invalid(const struct ag_lcd_bounce_ops *ops,
                            struct test_context *context)
 {
   assert(ag_lcd_timing_update(timing, 1, 2));
-  assert(ag_lcd_bounce_frame(ops, source, source_stride, source_height,
-                             source_x, source_y,
-                             visible_width, visible_height,
-                             bounce, bounce_rows, timing) == -1);
+  assert(ag_lcd_bounce_area(ops, source, source_stride, source_height,
+                            source_x, source_y, 0, 0,
+                            visible_width, visible_height,
+                            bounce, bounce_rows, timing) == -1);
   assert(context->submit_count == 0);
   assert(!timing->valid);
 }
@@ -121,19 +124,22 @@ int main(void)
 
   test_context_reset(&context, 50, 51);
   ag_lcd_timing_reset(&timing);
-  assert(ag_lcd_bounce_frame(&ops, primary_source, 4, 1, 0, 0, 4, 1,
-                             bounce, 1, &timing) == 0);
+  assert(ag_lcd_bounce_area(&ops, primary_source, 4, 1, 0, 0, 7, 9,
+                            4, 1, bounce, 1, &timing) == 0);
   assert(context.submit_count == 1);
+  assert(context.first_columns[0] == 7 && context.first_rows[0] == 9);
   assert(memcmp(context.snapshots[0], primary_expected,
                 sizeof(primary_expected)) == 0);
 
   test_context_reset(&context, 100, 135);
   ag_lcd_timing_reset(&timing);
-  assert(ag_lcd_bounce_frame(&ops, source, 6, 5, 1, 1, 3, 4,
-                             bounce, 2, &timing) == 0);
+  assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
+                            3, 4, bounce, 2, &timing) == 0);
   assert(context.submit_count == 2);
-  assert(context.first_rows[0] == 0 && context.row_counts[0] == 2);
-  assert(context.first_rows[1] == 2 && context.row_counts[1] == 2);
+  assert(context.first_columns[0] == 7 && context.first_rows[0] == 9 &&
+         context.row_counts[0] == 2);
+  assert(context.first_columns[1] == 7 && context.first_rows[1] == 11 &&
+         context.row_counts[1] == 2);
   assert(context.widths[0] == 3 && context.widths[1] == 3);
   assert(memcmp(context.snapshots[0], first_expected,
                 sizeof(first_expected)) == 0);
@@ -142,32 +148,32 @@ int main(void)
   assert(timing.valid && timing.write_ms == 35);
 
   test_context_reset(&context, 200, 220);
-  assert(ag_lcd_bounce_frame(&ops, source, 6, 5, 1, 1, 3, 3,
-                             bounce, 2, &timing) == 0);
+  assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
+                            3, 3, bounce, 2, &timing) == 0);
   assert(context.submit_count == 2);
   assert(context.row_counts[0] == 2);
-  assert(context.first_rows[1] == 2 && context.row_counts[1] == 1);
+  assert(context.first_rows[1] == 11 && context.row_counts[1] == 1);
   assert(memcmp(context.snapshots[1], final_expected,
                 sizeof(final_expected)) == 0);
   assert(timing.valid && timing.write_ms == 20);
 
   test_context_reset(&context, 300, 340);
   context.submit_results[1] = -7;
-  assert(ag_lcd_bounce_frame(&ops, source, 6, 5, 1, 1, 3, 4,
-                             bounce, 2, &timing) == -7);
+  assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
+                            3, 4, bounce, 2, &timing) == -7);
   assert(context.submit_count == 2);
   assert(!timing.valid);
 
   test_context_reset(&context, 400, 440);
   context.clock_success[0] = false;
-  assert(ag_lcd_bounce_frame(&ops, source, 6, 5, 1, 1, 3, 4,
-                             bounce, 2, &timing) == 0);
+  assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
+                            3, 4, bounce, 2, &timing) == 0);
   assert(context.submit_count == 2);
   assert(!timing.valid);
 
   test_context_reset(&context, 500, 499);
-  assert(ag_lcd_bounce_frame(&ops, source, 6, 5, 1, 1, 3, 4,
-                             bounce, 2, &timing) == 0);
+  assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
+                            3, 4, bounce, 2, &timing) == 0);
   assert(!timing.valid);
 
   test_context_reset(&context, 600, 640);

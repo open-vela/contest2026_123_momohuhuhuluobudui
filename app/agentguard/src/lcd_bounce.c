@@ -4,17 +4,19 @@
 
 #include <stddef.h>
 
-int ag_lcd_bounce_frame(const struct ag_lcd_bounce_ops *ops,
-                        const uint16_t *source,
-                        uint16_t source_stride,
-                        uint16_t source_height,
-                        uint16_t source_x,
-                        uint16_t source_y,
-                        uint16_t visible_width,
-                        uint16_t visible_height,
-                        uint16_t *bounce,
-                        uint16_t bounce_rows,
-                        struct ag_lcd_timing_state *timing)
+int ag_lcd_bounce_area(const struct ag_lcd_bounce_ops *ops,
+                       const uint16_t *source,
+                       uint16_t source_stride,
+                       uint16_t source_height,
+                       uint16_t source_x,
+                       uint16_t source_y,
+                       uint16_t destination_x,
+                       uint16_t destination_y,
+                       uint16_t visible_width,
+                       uint16_t visible_height,
+                       uint16_t *bounce,
+                       uint16_t bounce_rows,
+                       struct ag_lcd_timing_state *timing)
 {
   uint64_t started_ms = 0;
   uint64_t finished_ms = 0;
@@ -30,7 +32,9 @@ int ag_lcd_bounce_frame(const struct ag_lcd_bounce_ops *ops,
       source_x > source_stride ||
       visible_width > source_stride - source_x ||
       source_y > source_height ||
-      visible_height > source_height - source_y)
+      visible_height > source_height - source_y ||
+      visible_width - 1 > UINT16_MAX - destination_x ||
+      visible_height - 1 > UINT16_MAX - destination_y)
     {
       return -1;
     }
@@ -58,7 +62,8 @@ int ag_lcd_bounce_frame(const struct ag_lcd_bounce_ops *ops,
             }
         }
 
-      result = ops->submit(ops->context, bounce, first_row, row_count,
+      result = ops->submit(ops->context, bounce, destination_x,
+                           destination_y + first_row, row_count,
                            visible_width);
       if (result < 0)
         {

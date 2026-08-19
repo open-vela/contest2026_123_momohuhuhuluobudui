@@ -7,6 +7,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define AG_UI_HEADER_HEIGHT 18
+#define AG_UI_FOOTER_HEIGHT 34
+
 struct ag_ui_status
 {
   uint64_t seated_ms;
