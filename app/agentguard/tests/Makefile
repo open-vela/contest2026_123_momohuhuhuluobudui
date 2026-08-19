@@ -7,7 +7,7 @@ ROOT := ..
 TARGETS := test_core test_vision test_storage test_display_ui \
 	test_frame_timing test_lcd_timing test_lcd_transfer test_lcd_bounce \
 	test_thread_priority test_display_preview test_rgb565_region \
-	test_display_regions test_periodic_schedule \
+	test_display_regions \
 	test_espdl_backend_config test_espdl_alloc_policy \
 	test_espdl_private_pool test_espdl_tie_selftest
 
@@ -79,12 +79,6 @@ test_display_regions: test_display_regions.c \
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_display_regions.c \
 		$(ROOT)/src/display_regions.c $(ROOT)/src/rgb565_region.c -o $@
 
-test_periodic_schedule: test_periodic_schedule.c \
-	$(ROOT)/src/periodic_schedule.c \
-	$(ROOT)/include/agentguard/periodic_schedule.h
-	$(CC) $(CFLAGS) -I$(ROOT)/include test_periodic_schedule.c \
-		$(ROOT)/src/periodic_schedule.c -o $@
-
 test_espdl_backend_config: test_espdl_backend_config.cpp \
 	$(ROOT)/third_party/esp-dl/dl/dl_define_private.hpp \
 	$(ROOT)/compat/espdl/sdkconfig.h
@@ -124,7 +118,6 @@ test: $(TARGETS)
 	./test_display_preview
 	./test_rgb565_region
 	./test_display_regions
-	./test_periodic_schedule
 	./test_espdl_backend_config
 	./test_espdl_alloc_policy
 	./test_espdl_private_pool

@@ -56,6 +56,9 @@ fi
 "$tweak" --file "$config_file" --enable ESP32S3_SPI_DMA
 "$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMA_BUFSIZE 7680
 "$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMATHRESHOLD 64
+# Match Espressif's ESP32-S3-EYE BSP: the board-qualified ST7789 link runs at
+# 80 MHz, halving each synchronous scan-out interval versus the 40 MHz default.
+"$tweak" --file "$config_file" --set-val LCD_ST7789_FREQUENCY 80000000
 
 # AgentGuard uses Wi-Fi but does not use Bluetooth.  On the tested board the
 # BLE HCI startup work item intermittently panicked in hpwork, so keep the

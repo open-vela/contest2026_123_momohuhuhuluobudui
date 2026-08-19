@@ -10,7 +10,6 @@
 #include "agentguard/lcd_bounce.h"
 #include "agentguard/lcd_timing.h"
 #include "agentguard/lcd_transfer.h"
-#include "agentguard/periodic_schedule.h"
 #include "agentguard/storage.h"
 #include "agentguard/thread_priority.h"
 #include "agentguard/vision.h"
@@ -100,7 +99,7 @@ extern int board_i2c_init(void);
 #define AG_LCD_BOUNCE_PIXELS \
   (AG_LCD_WIDTH * AG_LCD_BOUNCE_ROWS)
 #define AG_BUFFER_COUNT 3
-#define AG_DISPLAY_REFRESH_MS 100
+#define AG_DISPLAY_REFRESH_US 80000
 #define AG_DISPLAY_THREAD_PRIORITY 110
 #define AG_CAMERA_FRAME_TIMEOUT_MS 3000
 #define AG_CAMERA_RESTART_DELAY_US 250000
@@ -635,15 +634,12 @@ static void *ag_display_worker_main(void *argument)
   struct ag_face_box mapped_face;
   struct ag_lcd_timing_state lcd_timing;
   struct ag_lcd_submit_timing_state submit_timing;
-  struct ag_periodic_schedule refresh_schedule;
   uint64_t last_camera_ms;
   uint64_t now_ms;
-  uint32_t refresh_delay_ms;
   bool have_frame;
 
   ag_lcd_timing_reset(&lcd_timing);
   ag_lcd_submit_timing_reset(&submit_timing);
-  ag_periodic_schedule_reset(&refresh_schedule, ag_now_ms());
 
   for (;;)
     {
@@ -718,9 +714,7 @@ static void *ag_display_worker_main(void *argument)
                           worker->display->height, &status);
       ag_display_frame(worker, &lcd_timing, &submit_timing);
 
-      refresh_delay_ms = ag_periodic_schedule_delay_ms(
-        &refresh_schedule, ag_now_ms(), AG_DISPLAY_REFRESH_MS);
-      usleep((useconds_t)refresh_delay_ms * 1000u);
+      usleep(AG_DISPLAY_REFRESH_US);
     }
 
   return NULL;
@@ -1117,7 +1111,7 @@ static int ag_run(void)
    * but the independent LCD worker must remain useful in that case.
    */
 
-  usleep((useconds_t)AG_DISPLAY_REFRESH_MS * 2u * 1000u);
+  usleep(AG_DISPLAY_REFRESH_US * 2u);
 
 #ifdef CONFIG_AGENTGUARD_ESP_DL
   ag_espdl_tie_conv_selftest_run_once();

@@ -97,6 +97,7 @@ def main() -> None:
         assert values["CONFIG_ESP32S3_SPI_DMA"] == "y"
         assert values["CONFIG_ESP32S3_SPI_DMA_BUFSIZE"] == "7680"
         assert values["CONFIG_ESP32S3_SPI_DMATHRESHOLD"] == "64"
+        assert values["CONFIG_LCD_ST7789_FREQUENCY"] == "80000000"
 
     print("AgentGuard LCD DMA config test: PASS")
 
