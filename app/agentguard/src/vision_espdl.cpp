@@ -17,6 +17,8 @@ namespace
 
 constexpr unsigned int kInferenceInterval = 3;
 constexpr unsigned int kMaximumFaces = 8;
+constexpr float kFaceScoreThreshold =
+  CONFIG_AGENTGUARD_FACE_SCORE_THRESHOLD_PERCENT / 100.0f;
 constexpr uint32_t kCameraImageCaps =
   dl::image::DL_IMAGE_CAP_RGB_SWAP |
   dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN;
@@ -95,8 +97,8 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
           return -1;
         }
 
-      g_detector->set_score_thr(0.60f, 0);
-      g_detector->set_score_thr(0.60f, 1);
+      g_detector->set_score_thr(kFaceScoreThreshold, 0);
+      g_detector->set_score_thr(kFaceScoreThreshold, 1);
       g_detector->set_image_caps(kCameraImageCaps);
 
       dl::image::img_t reference_image = {

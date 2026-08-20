@@ -11,11 +11,13 @@
 #define CONFIG_SPIRAM_XIP_FROM_PSRAM 0
 #define CONFIG_ESP32P4_BOOST 0
 
-/* Diagnostic backend: preserve TIE728 for non-convolution operators while
- * routing the two convolution families through their portable C paths. */
+/* Preserve TIE728 for non-convolution operators while routing the two
+ * numerically incorrect convolution families through their portable C
+ * paths. */
 #define CONFIG_AGENTGUARD_ESP_DL_FORCE_C 0
-#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_CONV 0
-#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_DEPTHWISE 0
+#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_CONV 1
+#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_DEPTHWISE 1
+#define CONFIG_AGENTGUARD_FACE_SCORE_THRESHOLD_PERCENT 50
 
 #define CONFIG_HUMAN_FACE_DETECT_MODEL_IN_FLASH_RODATA 1
 #define CONFIG_HUMAN_FACE_DETECT_MODEL_IN_FLASH_PARTITION 0
