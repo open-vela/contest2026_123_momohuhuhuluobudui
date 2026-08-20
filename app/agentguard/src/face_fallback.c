@@ -37,7 +37,6 @@ bool ag_face_fallback_apply_rgb565(const uint16_t *pixels,
   unsigned int grid_width;
   unsigned int grid_height;
   unsigned int grid_size;
-  unsigned int face_count = 0;
   unsigned int largest = 0;
   struct ag_face_box primary = {0};
   unsigned int x;
@@ -134,7 +133,6 @@ bool ag_face_fallback_apply_rgb565(const uint16_t *pixels,
           continue;
         }
 
-      face_count++;
       if (tail > largest)
         {
           largest = tail;
@@ -145,12 +143,12 @@ bool ag_face_fallback_apply_rgb565(const uint16_t *pixels,
         }
     }
 
-  if (face_count == 0)
+  if (largest == 0)
     {
       return false;
     }
 
-  result->face_count = face_count > UINT8_MAX ? UINT8_MAX : face_count;
+  result->face_count = 1;
   result->posture_score = 0;
   result->primary_face = primary;
   return true;

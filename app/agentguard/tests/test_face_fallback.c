@@ -45,6 +45,16 @@ int main(void)
   assert(result.primary_face.x == 60 && result.primary_face.y == 40);
   assert(result.primary_face.width == 56 && result.primary_face.height == 68);
 
+  memset(frame, 0, sizeof(frame));
+  memset(&result, 0, sizeof(result));
+  rectangle(24, 32, 40, 48, skin);
+  rectangle(160, 72, 64, 72, skin);
+  rectangle(264, 152, 40, 48, skin);
+  assert(ag_face_fallback_apply_rgb565(frame, WIDTH, HEIGHT, &result));
+  assert(result.face_count == 1);
+  assert(result.primary_face.x == 160 && result.primary_face.y == 72);
+  assert(result.primary_face.width == 64 && result.primary_face.height == 72);
+
   result.face_count = 1;
   result.primary_face.x = 7;
   result.primary_face.y = 8;
