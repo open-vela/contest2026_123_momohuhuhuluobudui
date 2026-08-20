@@ -26,11 +26,27 @@ scan line becomes visually unnoticeable at 5–10 FPS.
 
 ## Architecture
 
-Set `CONFIG_ESP32S3_SPI_DMA_BUFSIZE` to 60,000 bytes, exactly the storage needed
-for 200×150 RGB565 pixels. The ESP32-S3 SPI driver already sizes its GDMA
+Set `CONFIG_ESP32S3_SPI_DMA_BUFSIZE` to 60,000 bytes, exactly the logical storage
+needed for 200×150 RGB565 pixels. The ESP32-S3 SPI driver already sizes its GDMA
 descriptor arrays from this configuration. At the current 4,095-byte descriptor
 limit, the driver will create 15 descriptors and chain the complete preview in
 one SPI transaction before waiting once for completion.
+
+The original proposal placed those 60,000 bytes in static internal DRAM. A
+pre-implementation boundary check disproved its feasibility: the simple-boot
+DRAM region ends at `0x3fcd0000`, while the current image has
+`_sheap=0x3fcca68c`, leaving only 22,900 bytes. Growing the existing 15,360-byte
+bounce buffer to 60,000 bytes would require another 44,640 bytes and cannot
+link safely.
+
+Instead, remove the static internal bounce buffer and allocate a 64-byte-aligned
+64 KiB transfer allocation from the common heap during display-worker startup.
+At the measured internal boundary this allocation is necessarily served by the
+configured PSRAM region. Use only the first 30,000 pixels as the logical DMA
+capacity, and verify that the returned address is in the ESP32-S3 external RAM
+range before enabling the display worker. Allocation or classification failure
+uses the existing startup retry path and never falls back to a smaller,
+multi-transaction preview.
 
 Change the AgentGuard bounce helper to accept buffer capacity in pixels rather
 than a fixed row count. For each submitted region, it calculates
@@ -39,11 +55,21 @@ all 30,000 pixels and is submitted once, while wider 240-pixel header or footer
 updates safely use at most 125 rows. A capacity smaller than one row is an
 error.
 
-No NuttX official source file is expected to change. The only NuttX-side effect
-is the generated configuration value applied by the repository's reproducible
-configuration script. If implementation reveals a required change under the
-openvela `nuttx` repository, work stops before that change: the driver patch
-must receive a separate design, change record, commit, and official review.
+One NuttX official source file changes. In
+`arch/xtensa/src/esp32s3/esp32s3_spi.c`, `esp32s3_spi_dma_init()` configures the
+TX GDMA external-memory block size to 64 bytes immediately after requesting the
+channel:
+
+```c
+esp32s3_dma_set_ext_memblk(priv->dma_channel, true,
+                           ESP32S3_DMA_EXT_MEMBLK_64B);
+```
+
+This matches the existing PSRAM framebuffer setup in `esp32s3_lcd.c`, changes
+no public interface, and leaves internal-RAM transfers unchanged because the
+setting applies to external-memory accesses. This official-source modification
+must be an isolated NuttX repository commit with its own build and hardware
+evidence. It must not be pushed until openvela's official review accepts it.
 
 ## Data flow and pacing
 
@@ -51,8 +77,8 @@ For every display iteration:
 
 1. The display worker snapshots the latest camera frame and UI state.
 2. It scales and renders the frame into the existing screen buffer.
-3. The preview region is copied into the 60,000-byte internal bounce buffer,
-   with the existing RGB565 byte swap.
+3. The preview region is copied into the aligned PSRAM transfer buffer, with
+   the existing RGB565 byte swap.
 4. One `LCDDEVIO_PUTAREA` call programs the 200×150 window and sends a chained,
    continuous GDMA transaction.
 5. Dirty header and footer regions are submitted afterward using the same
@@ -66,22 +92,26 @@ locking or open-loop vertical synchronization is reintroduced.
 
 ## Memory and failure handling
 
-The static internal bounce buffer grows from 15,360 to 60,000 bytes, an increase
-of 44,640 bytes. The GDMA descriptor arrays also grow to 15 entries per enabled
-SPI controller. The target link must succeed, and the final map must be checked
-for the bounce symbol size, `.dram0.bss`, `_sheap`, and adequate internal DRAM
-headroom.
+The 15,360-byte static internal bounce buffer is removed. Its replacement is a
+64 KiB runtime allocation in PSRAM, of which 60,000 bytes are DMA-visible pixel
+data. The GDMA descriptor arrays grow from four to 15 entries per enabled SPI
+controller, but this small increase is outweighed by removing the static
+bounce allocation. The target link must succeed, and the final map must confirm
+that the old bounce symbol is absent, `.dram0.bss` and `_sheap` do not regress,
+and the runtime transfer pointer is external and 64-byte aligned.
 
-Compile-time assertions require an even byte count and enough capacity for the
-complete preview. Runtime validation rejects zero capacity, capacity smaller
-than one visible row, invalid dimensions, and multiplication or coordinate
-bounds already covered by the helper. LCD submission errors retain the current
-behavior: invalidate timing data, close the display, and let the application
-retry its normal recovery path.
+Compile-time assertions require an even configured byte count and enough logical
+capacity for the complete preview. Runtime validation rejects allocation
+failure, a non-PSRAM or misaligned transfer pointer, zero capacity, capacity
+smaller than one visible row, invalid dimensions, and multiplication or
+coordinate bounds already covered by the helper. LCD submission errors retain
+the current behavior: invalidate timing data, close the display, and let the
+application retry its normal recovery path.
 
-If the target fails to link or leaves unsafe runtime headroom, implementation
-stops and reports the measured boundary. It must not move unrelated stacks or
-functional state merely to force this experiment to fit.
+If the target fails to link, the PSRAM allocation fails, or hardware rejects
+the PSRAM-backed SPI transfer, implementation stops and reports the measured
+boundary. It must not move unrelated stacks or functional state merely to force
+this experiment to fit.
 
 ## Testing and verification
 
@@ -93,6 +123,8 @@ Host tests will first fail under the old row-count interface, then verify:
 - capacity smaller than one row is rejected without submission;
 - RGB565 byte swapping, coordinates, error propagation, and timing semantics
   remain unchanged;
+- the display worker rejects a missing, non-external, or misaligned transfer
+  buffer and frees it on startup failure;
 - the configuration script produces a 60,000-byte SPI DMA size and a 125 ms
   refresh interval.
 
@@ -111,11 +143,12 @@ an acceptance failure for this display-only experiment.
 ## Change and review records
 
 Application code, tests, and reproducible configuration changes belong in the
-contest repository commit. The uncommitted `AGENTGUARD_PROGRESS.md` handoff log
-records the experiment, firmware size and hash, memory measurements, flash
-result, and physical feedback.
+contest repository commits. The `esp32s3_spi_dma_init()` external-memory block
+configuration belongs in one separate openvela/NuttX commit. Its change record
+must state the affected file and function, absence of public API changes,
+PSRAM-TX compatibility effect, build and hardware evidence, and rollback by
+reverting that commit. It remains local until official review permits a push.
 
-Any future openvela/NuttX official-source changes must be isolated in their own
-repository commit and documented with affected files, public interfaces,
-configuration, tests, compatibility impact, and rollback procedure before an
-official push or review request.
+The uncommitted `AGENTGUARD_PROGRESS.md` handoff log records both repositories'
+commit IDs, the official-review requirement, firmware size and hash, memory
+measurements, flash result, and physical feedback.
