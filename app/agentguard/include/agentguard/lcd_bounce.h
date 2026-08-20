@@ -6,7 +6,6 @@
 #include "agentguard/lcd_timing.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
 struct ag_lcd_bounce_ops
@@ -30,7 +29,7 @@ int ag_lcd_bounce_area(const struct ag_lcd_bounce_ops *ops,
                        uint16_t visible_width,
                        uint16_t visible_height,
                        uint16_t *bounce,
-                       size_t bounce_pixel_capacity,
+                       uint16_t bounce_rows,
                        struct ag_lcd_timing_state *timing);
 
 #endif

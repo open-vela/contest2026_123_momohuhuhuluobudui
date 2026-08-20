@@ -8,7 +8,6 @@
 #include "agentguard/display_ui.h"
 #include "agentguard/frame_timing.h"
 #include "agentguard/lcd_bounce.h"
-#include "agentguard/lcd_dma_buffer.h"
 #include "agentguard/lcd_timing.h"
 #include "agentguard/lcd_transfer.h"
 #include "agentguard/storage.h"
@@ -96,12 +95,12 @@ extern int board_i2c_init(void);
 /* Keep this allocation larger than the remaining internal DRAM region so
  * NuttX places the non-DMA HUD history in external RAM. */
 #define AG_LCD_HUD_ALLOCATION_BYTES (64 * 1024)
-#define AG_LCD_DMA_ALIGNMENT 64
-#define AG_LCD_DMA_ALLOCATION_BYTES (64 * 1024)
 #define AG_LCD_BOUNCE_PIXELS \
   (CONFIG_ESP32S3_SPI_DMA_BUFSIZE / sizeof(uint16_t))
+#define AG_LCD_BOUNCE_ROWS \
+  (AG_LCD_BOUNCE_PIXELS / AG_LCD_WIDTH)
 #define AG_BUFFER_COUNT 3
-#define AG_DISPLAY_REFRESH_US 125000
+#define AG_DISPLAY_REFRESH_US 80000
 #define AG_DISPLAY_THREAD_PRIORITY 110
 #define AG_CAMERA_FRAME_TIMEOUT_MS 3000
 #define AG_CAMERA_RESTART_DELAY_US 250000
@@ -109,15 +108,12 @@ extern int board_i2c_init(void);
 #define AG_PC_CONNECT_TIMEOUT_MS 500
 #define AG_LOG_COMPACT_INTERVAL_MS (6ull * 60ull * 60ull * 1000ull)
 
+static uint16_t g_agentguard_lcd_bounce[AG_LCD_BOUNCE_PIXELS]
+  __attribute__((aligned(64)));
+
 _Static_assert(CONFIG_ESP32S3_SPI_DMA_BUFSIZE %
-               sizeof(uint16_t) == 0,
-               "LCD DMA buffer must contain whole RGB565 pixels");
-_Static_assert(AG_LCD_BOUNCE_PIXELS >=
-               AG_PREVIEW_WIDTH * AG_PREVIEW_HEIGHT,
-               "LCD DMA buffer must hold the complete preview");
-_Static_assert(AG_LCD_DMA_ALLOCATION_BYTES >=
-               CONFIG_ESP32S3_SPI_DMA_BUFSIZE,
-               "LCD PSRAM allocation must hold the DMA buffer");
+               (AG_LCD_WIDTH * sizeof(uint16_t)) == 0,
+               "LCD DMA buffer must contain whole display rows");
 
 static const struct ag_preview_area g_agentguard_preview_area =
 {
@@ -145,8 +141,6 @@ struct ag_lcd_submit_context
   struct ag_display *display;
   struct lcddev_area_s *area;
   struct ag_lcd_submit_timing_state *submit_timing;
-  uint16_t *bounce_pixels;
-  size_t bounce_pixel_capacity;
 };
 
 struct ag_camera_watchdog
@@ -165,7 +159,6 @@ struct ag_display_worker
   uint16_t *draw_pixels;
   uint16_t *screen_pixels;
   uint16_t *hud_pixels;
-  struct ag_lcd_dma_buffer lcd_dma;
   struct ag_display_regions_state regions;
   struct ag_ui_status status;
   struct ag_face_box face;
@@ -587,8 +580,8 @@ static int ag_display_submit_area(void *argument, const uint16_t *pixels,
   ag_lcd_timing_reset(&area_timing);
   return ag_lcd_bounce_area(&bounce_ops, pixels, stride, source_height,
                             x, y, x, y, width, height,
-                            context->bounce_pixels,
-                            context->bounce_pixel_capacity, &area_timing);
+                            g_agentguard_lcd_bounce,
+                            AG_LCD_BOUNCE_ROWS, &area_timing);
 }
 
 static void ag_display_frame(struct ag_display_worker *worker,
@@ -613,8 +606,6 @@ static void ag_display_frame(struct ag_display_worker *worker,
   context.display = worker->display;
   context.area = &area;
   context.submit_timing = submit_timing;
-  context.bounce_pixels = worker->lcd_dma.pixels;
-  context.bounce_pixel_capacity = worker->lcd_dma.pixel_capacity;
   regions_ops.submit = ag_display_submit_area;
   regions_ops.context = &context;
   ag_lcd_submit_timing_reset(submit_timing);
@@ -734,35 +725,6 @@ static void *ag_display_worker_main(void *argument)
   return NULL;
 }
 
-static void *ag_lcd_dma_allocate(void *context, size_t alignment,
-                                 size_t bytes)
-{
-  (void)context;
-  return memalign(alignment, bytes);
-}
-
-static void ag_lcd_dma_release(void *context, void *memory)
-{
-  (void)context;
-  free(memory);
-}
-
-static bool ag_lcd_dma_is_external(void *context, const void *memory)
-{
-  uintptr_t address = (uintptr_t)memory;
-
-  (void)context;
-  return address >= 0x3c000000u && address < 0x3e000000u;
-}
-
-static const struct ag_lcd_dma_buffer_ops g_agentguard_lcd_dma_ops =
-{
-  .allocate = ag_lcd_dma_allocate,
-  .release = ag_lcd_dma_release,
-  .is_external = ag_lcd_dma_is_external,
-  .context = NULL
-};
-
 static int ag_display_worker_start(struct ag_display_worker *worker,
                                    struct ag_display *display)
 {
@@ -793,15 +755,6 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
       worker->screen_pixels = NULL;
       worker->hud_pixels = NULL;
       return -1;
-    }
-
-  if (!ag_lcd_dma_buffer_init(&worker->lcd_dma,
-                              &g_agentguard_lcd_dma_ops,
-                              AG_LCD_DMA_ALIGNMENT,
-                              AG_LCD_DMA_ALLOCATION_BYTES,
-                              CONFIG_ESP32S3_SPI_DMA_BUFSIZE))
-    {
-      goto fail_buffers;
     }
 
   memset(worker->latest_pixels, 0, AG_FRAME_BYTES);
@@ -835,8 +788,6 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
   return OK;
 
 fail_buffers:
-  ag_lcd_dma_buffer_release(&worker->lcd_dma,
-                            &g_agentguard_lcd_dma_ops);
   free(worker->latest_pixels);
   free(worker->draw_pixels);
   free(worker->screen_pixels);
