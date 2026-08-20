@@ -7,6 +7,7 @@ ROOT := ..
 TARGETS := test_core test_vision test_storage test_display_ui \
 	test_frame_timing test_lcd_timing test_lcd_transfer test_lcd_bounce \
 	test_lcd_dma_buffer \
+	test_esp32s3_dma_descriptors \
 	test_thread_priority test_display_preview test_rgb565_region \
 	test_display_regions \
 	test_espdl_backend_config test_espdl_alloc_policy \
@@ -58,6 +59,12 @@ test_lcd_dma_buffer: test_lcd_dma_buffer.c \
 	$(ROOT)/include/agentguard/lcd_dma_buffer.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_lcd_dma_buffer.c \
 		$(ROOT)/src/lcd_dma_buffer.c -o $@
+
+test_esp32s3_dma_descriptors: test_esp32s3_dma_descriptors.c \
+	../../../../nuttx/arch/xtensa/src/esp32s3/esp32s3_dma.h \
+	../../../../nuttx/arch/xtensa/src/esp32s3/esp32s3_spi_psram_dma.h
+	$(CC) $(CFLAGS) -I../../../../nuttx/include \
+		-I../../../../nuttx/arch/xtensa/src/esp32s3 $< -o $@
 
 test_thread_priority: test_thread_priority.c \
 	$(ROOT)/src/thread_priority.c \
@@ -122,6 +129,7 @@ test: $(TARGETS)
 	./test_lcd_transfer
 	./test_lcd_bounce
 	./test_lcd_dma_buffer
+	./test_esp32s3_dma_descriptors
 	./test_thread_priority
 	./test_display_preview
 	./test_rgb565_region
