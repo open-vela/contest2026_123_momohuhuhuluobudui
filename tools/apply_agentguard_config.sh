@@ -50,11 +50,12 @@ fi
 # GPIO2, but ESP32-S3-EYE connects camera XCLK to GPIO15.
 "$tweak" --file "$config_file" --set-val ESP32S3_LEDC_CHANNEL0_PIN 15
 
-# The ST7789 frame is 115,200 bytes.  Polling SPI splits it into roughly 1,800
-# 64-byte transactions and visibly scans the LCD.  Use the existing SPI2 DMA
-# path; the display worker cleans its cached transmit buffer before submission.
+# The 200x150 RGB565 preview is 60,000 bytes.  Size the SPI2 DMA descriptor
+# array for one 15-descriptor chain so the PSRAM-backed preview is submitted as
+# one continuous transaction.  The display worker cleans the cached buffer
+# before submission.
 "$tweak" --file "$config_file" --enable ESP32S3_SPI_DMA
-"$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMA_BUFSIZE 15360
+"$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMA_BUFSIZE 60000
 "$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMATHRESHOLD 64
 # Match Espressif's ESP32-S3-EYE BSP: the board-qualified ST7789 link runs at
 # 80 MHz, halving each synchronous scan-out interval versus the 40 MHz default.
