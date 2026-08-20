@@ -54,7 +54,7 @@ fi
 # 64-byte transactions and visibly scans the LCD.  Use the existing SPI2 DMA
 # path; the display worker cleans its cached transmit buffer before submission.
 "$tweak" --file "$config_file" --enable ESP32S3_SPI_DMA
-"$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMA_BUFSIZE 7680
+"$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMA_BUFSIZE 15360
 "$tweak" --file "$config_file" --set-val ESP32S3_SPI_DMATHRESHOLD 64
 # Match Espressif's ESP32-S3-EYE BSP: the board-qualified ST7789 link runs at
 # 80 MHz, halving each synchronous scan-out interval versus the 40 MHz default.

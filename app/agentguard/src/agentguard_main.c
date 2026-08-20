@@ -95,9 +95,10 @@ extern int board_i2c_init(void);
 /* Keep this allocation larger than the remaining internal DRAM region so
  * NuttX places the non-DMA HUD history in external RAM. */
 #define AG_LCD_HUD_ALLOCATION_BYTES (64 * 1024)
-#define AG_LCD_BOUNCE_ROWS 16
 #define AG_LCD_BOUNCE_PIXELS \
-  (AG_LCD_WIDTH * AG_LCD_BOUNCE_ROWS)
+  (CONFIG_ESP32S3_SPI_DMA_BUFSIZE / sizeof(uint16_t))
+#define AG_LCD_BOUNCE_ROWS \
+  (AG_LCD_BOUNCE_PIXELS / AG_LCD_WIDTH)
 #define AG_BUFFER_COUNT 3
 #define AG_DISPLAY_REFRESH_US 80000
 #define AG_DISPLAY_THREAD_PRIORITY 110
@@ -109,6 +110,10 @@ extern int board_i2c_init(void);
 
 static uint16_t g_agentguard_lcd_bounce[AG_LCD_BOUNCE_PIXELS]
   __attribute__((aligned(64)));
+
+_Static_assert(CONFIG_ESP32S3_SPI_DMA_BUFSIZE %
+               (AG_LCD_WIDTH * sizeof(uint16_t)) == 0,
+               "LCD DMA buffer must contain whole display rows");
 
 static const struct ag_preview_area g_agentguard_preview_area =
 {
