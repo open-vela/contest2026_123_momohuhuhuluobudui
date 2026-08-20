@@ -2,6 +2,7 @@
 
 #include "agentguard/vision_model.h"
 #include "agentguard/espdl_tie_selftest.h"
+#include "agentguard/espdl_pixel_mode.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -22,12 +23,21 @@ constexpr float kFaceScoreThreshold =
 constexpr uint32_t kCameraImageCaps =
   dl::image::DL_IMAGE_CAP_RGB_SWAP |
   dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN;
+constexpr uint32_t kPixelModeCaps[AG_ESPDL_PIXEL_MODE_COUNT] =
+{
+  0,
+  dl::image::DL_IMAGE_CAP_RGB_SWAP,
+  dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN,
+  dl::image::DL_IMAGE_CAP_RGB_SWAP |
+    dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN,
+};
 
 extern "C" const uint8_t _binary_human_face_rgb565be_start[];
 
 HumanFaceDetect *g_detector;
 ag_vision_result g_cached_result;
 unsigned int g_frame_counter;
+unsigned int g_live_inference_counter;
 ag_vision_model_diagnostics g_diagnostics;
 
 uint64_t monotonic_ms()
@@ -130,6 +140,11 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
     .height = height,
     .pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB565,
   };
+  unsigned int pixel_mode =
+    ag_espdl_pixel_mode(g_live_inference_counter++);
+  g_detector->set_image_caps(kPixelModeCaps[pixel_mode]);
+  g_diagnostics.pixel_mode_scores[0] =
+    static_cast<uint8_t>(pixel_mode);
   uint64_t inference_started_ms = monotonic_ms();
   std::list<dl::detect::result_t> &detections = g_detector->run(image);
   uint64_t inference_finished_ms = monotonic_ms();

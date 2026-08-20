@@ -275,12 +275,15 @@ bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
   if (status->lcd_submit_timing_valid &&
       status->model_diagnostics_valid)
     {
-      ag_ui_format_model_diagnostics(buffer, buffer_size,
-                                     status->msr_candidates,
-                                     status->inference_ms,
-                                     status->tie_selftest_valid,
-                                     status->tie_ram_pass,
-                                     status->tie_flash_pass);
+      snprintf(buffer, buffer_size, "P:%u S:%u M:%u F:%u AI:%lu",
+               status->pixel_mode_scores[0] > 3 ? 3 :
+                 status->pixel_mode_scores[0],
+               status->msr_score_percent > 99 ? 99 :
+                 status->msr_score_percent,
+               status->msr_candidates > 99 ? 99 : status->msr_candidates,
+               status->face_count > 9 ? 9 : status->face_count,
+               (unsigned long)(status->inference_ms > 9999 ? 9999 :
+                               status->inference_ms));
       return true;
     }
 

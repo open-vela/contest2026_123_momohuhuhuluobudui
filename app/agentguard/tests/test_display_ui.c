@@ -87,6 +87,9 @@ int main(void)
   status.tie_flash_pass = true;
   status.model_diagnostics_valid = true;
   status.msr_candidates = 3;
+  status.msr_score_percent = 57;
+  status.pixel_mode_scores[0] = 2;
+  status.face_count = 1;
   status.inference_ms = 847;
   status.frame_timing_valid = true;
   status.capture_interval_ms = 500;
@@ -108,14 +111,14 @@ int main(void)
   status.lcd_submit_max_ms = 80;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
-  assert(strcmp(diagnostics, "M:3 AI:847 K:11") == 0);
+  assert(strcmp(diagnostics, "P:2 S:57 M:3 F:1 AI:847") == 0);
 
   status.lcd_write_ms = 10000;
   status.lcd_submit_sum_ms = UINT32_MAX;
   status.lcd_submit_max_ms = 12345;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
-  assert(strcmp(diagnostics, "M:3 AI:847 K:11") == 0);
+  assert(strcmp(diagnostics, "P:2 S:57 M:3 F:1 AI:847") == 0);
 
   status.lcd_submit_timing_valid = false;
   status.lcd_write_ms = 31;
