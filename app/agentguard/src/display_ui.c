@@ -446,8 +446,8 @@ uint16_t ag_ui_face_color(const struct ag_ui_status *status)
   return AG_UI_GREEN;
 }
 
-void ag_ui_rotate_180_rgb565(uint16_t *pixels, uint16_t width,
-                             uint16_t height)
+void ag_ui_orient_for_model_rgb565(uint16_t *pixels, uint16_t width,
+                                   uint16_t height)
 {
   size_t left;
   size_t right;

@@ -17,7 +17,7 @@ int main(void)
 {
   struct ag_ui_status status;
   char diagnostics[40];
-  uint16_t rotation_sample[6] = {1, 2, 3, 4, 5, 6};
+  uint16_t orientation_sample[6] = {1, 2, 3, 4, 5, 6};
   uint16_t no_face_color;
   uint16_t one_face_color;
   uint16_t multiple_color;
@@ -153,13 +153,13 @@ int main(void)
                                 42);
   assert(strcmp(diagnostics, "T:87/F:1 S:42") == 0);
 
-  ag_ui_rotate_180_rgb565(rotation_sample, 3, 2);
-  assert(rotation_sample[0] == 6);
-  assert(rotation_sample[1] == 5);
-  assert(rotation_sample[2] == 4);
-  assert(rotation_sample[3] == 3);
-  assert(rotation_sample[4] == 2);
-  assert(rotation_sample[5] == 1);
+  ag_ui_orient_for_model_rgb565(orientation_sample, 3, 2);
+  assert(orientation_sample[0] == 6);
+  assert(orientation_sample[1] == 5);
+  assert(orientation_sample[2] == 4);
+  assert(orientation_sample[3] == 3);
+  assert(orientation_sample[4] == 2);
+  assert(orientation_sample[5] == 1);
 
   memset(&status, 0, sizeof(status));
   memset(frame, 0x55, sizeof(frame));

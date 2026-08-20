@@ -1211,6 +1211,8 @@ static int ag_run(void)
                              frame.timestamp.tv_sec,
                              frame.timestamp.tv_usec);
 
+      ag_ui_orient_for_model_rgb565((uint16_t *)frame.m.userptr,
+                                    AG_WIDTH, AG_HEIGHT);
       if (ag_vision_process_rgb565(&vision,
                                    (uint16_t *)frame.m.userptr,
                                    AG_WIDTH, AG_HEIGHT,
@@ -1264,17 +1266,6 @@ static int ag_run(void)
             {
               ui_status.seated_ms =
                 observation.monotonic_ms - state.presence_since_ms;
-            }
-
-          ag_ui_rotate_180_rgb565((uint16_t *)frame.m.userptr,
-                                  AG_WIDTH, AG_HEIGHT);
-          if (display_face.x + display_face.width <= AG_WIDTH &&
-              display_face.y + display_face.height <= AG_HEIGHT)
-            {
-              display_face.x = AG_WIDTH - display_face.x -
-                               display_face.width;
-              display_face.y = AG_HEIGHT - display_face.y -
-                               display_face.height;
             }
 
           ag_display_publish(&display_worker,

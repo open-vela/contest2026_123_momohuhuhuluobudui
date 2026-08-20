@@ -84,8 +84,8 @@ void ag_ui_format_reference_result(char *buffer, size_t buffer_size,
                                    uint8_t reference_face_count,
                                    uint8_t live_score_percent);
 uint16_t ag_ui_face_color(const struct ag_ui_status *status);
-void ag_ui_rotate_180_rgb565(uint16_t *pixels, uint16_t width,
-                             uint16_t height);
+void ag_ui_orient_for_model_rgb565(uint16_t *pixels, uint16_t width,
+                                   uint16_t height);
 void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
                          uint16_t frame_height, uint16_t view_width,
                          uint16_t view_height,
