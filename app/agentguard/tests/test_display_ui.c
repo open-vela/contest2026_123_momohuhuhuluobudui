@@ -108,14 +108,14 @@ int main(void)
   status.lcd_submit_max_ms = 80;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
-  assert(strcmp(diagnostics, "D:160 S:145 M:80") == 0);
+  assert(strcmp(diagnostics, "M:3 AI:847 K:11") == 0);
 
   status.lcd_write_ms = 10000;
   status.lcd_submit_sum_ms = UINT32_MAX;
   status.lcd_submit_max_ms = 12345;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
-  assert(strcmp(diagnostics, "D:9999+ S:9999+ M:9999+") == 0);
+  assert(strcmp(diagnostics, "M:3 AI:847 K:11") == 0);
 
   status.lcd_submit_timing_valid = false;
   status.lcd_write_ms = 31;

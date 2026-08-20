@@ -272,6 +272,18 @@ bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
       return false;
     }
 
+  if (status->lcd_submit_timing_valid &&
+      status->model_diagnostics_valid)
+    {
+      ag_ui_format_model_diagnostics(buffer, buffer_size,
+                                     status->msr_candidates,
+                                     status->inference_ms,
+                                     status->tie_selftest_valid,
+                                     status->tie_ram_pass,
+                                     status->tie_flash_pass);
+      return true;
+    }
+
   if (status->lcd_write_valid && status->lcd_submit_timing_valid)
     {
       ag_ui_format_lcd_submit_timing(buffer, buffer_size,
