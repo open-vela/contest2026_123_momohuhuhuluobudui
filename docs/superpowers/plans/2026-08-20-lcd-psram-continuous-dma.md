@@ -19,77 +19,34 @@
 - The only openvela/NuttX source change is in `esp32s3_spi_dma_init()` and changes no public API.
 - Keep the NuttX commit local until official review permits push.
 - Keep `AGENTGUARD_PROGRESS.md` uncommitted and record both repositories' commits.
+- Work in the current `dev-ai-contest-2026` workspace because required project
+  sources are untracked and would be absent from a new worktree; stage only
+  explicitly named task files.
+- The user approved a TDD exception for the single NuttX GDMA register
+  configuration. Validate it by target build, isolated diff review, and real
+  PSRAM DMA hardware behavior; do not substitute a source-text change detector.
 
 ---
 
-### Task 1: Add a regression guard for SPI PSRAM TX configuration
+### Task 1: Establish the in-place baseline
 
 **Files:**
-- Create: `app/agentguard/tests/test_spi_psram_dma_config.py`
-- Modify: `app/agentguard/tests/Makefile`
+- Inspect only: contest and NuttX repository status
 
 **Interfaces:**
-- Consumes: the adjacent openvela checkout at `REPO_ROOT.parent / "nuttx"`.
-- Produces: a source regression check requiring 64-byte TX external-memory block configuration after successful GDMA channel allocation.
+- Produces: passing baseline tests and an exact record of pre-existing changes.
 
-- [ ] **Step 1: Write the failing source regression test**
+- [ ] **Step 1: Verify repository boundaries**
 
-Create `test_spi_psram_dma_config.py` with a `main()` that reads
-`nuttx/arch/xtensa/src/esp32s3/esp32s3_spi.c`, isolates the text from
-`static int esp32s3_spi_dma_init` through `static void esp32s3_spi_dma_deinit`,
-and asserts this call occurs after the `priv->dma_channel < 0` failure block:
+Run status for both repositories and confirm the contest branch is
+`dev-ai-contest-2026`, the NuttX SPI target file is clean, and the contest index
+contains no staged changes.
 
-```python
-#!/usr/bin/env python3
+- [ ] **Step 2: Run the complete host baseline**
 
-import re
-from pathlib import Path
+Run `make -C app/agentguard/tests clean test`.
 
-
-TEST_DIR = Path(__file__).resolve().parent
-REPO_ROOT = TEST_DIR.parents[2]
-SPI_SOURCE = (REPO_ROOT.parent / "nuttx" / "arch" / "xtensa" / "src" /
-              "esp32s3" / "esp32s3_spi.c")
-
-
-def main() -> None:
-    source = SPI_SOURCE.read_text(encoding="utf-8")
-    start = source.index("static int esp32s3_spi_dma_init(")
-    end = source.index("static void esp32s3_spi_dma_deinit(", start)
-    initializer = source[start:end]
-    failure_end = initializer.index("return ERROR;")
-    match = re.search(
-        r"esp32s3_dma_set_ext_memblk\(priv->dma_channel,\s*true,\s*"
-        r"ESP32S3_DMA_EXT_MEMBLK_64B\);",
-        initializer,
-    )
-    assert match is not None
-    call_index = match.start()
-    assert call_index > failure_end
-    print("AgentGuard SPI PSRAM DMA config test: PASS")
-
-
-if __name__ == "__main__":
-    main()
-```
-
-Add `python3 test_spi_psram_dma_config.py` after the LCD DMA configuration test
-in the Makefile's `test` recipe.
-
-- [ ] **Step 2: Run the test and verify RED**
-
-Run `python3 app/agentguard/tests/test_spi_psram_dma_config.py`.
-
-Expected: `AssertionError`, because SPI DMA initialization does not yet
-configure the external-memory block size.
-
-- [ ] **Step 3: Commit only the failing guard in the contest repository**
-
-```bash
-git --git-dir=/home/yhx/Desktop/openvela/.repo/projects/contest2026_123_momohuhuhuluobudui.git --work-tree=/home/yhx/Desktop/openvela/contest2026_123_momohuhuhuluobudui add app/agentguard/tests/test_spi_psram_dma_config.py app/agentguard/tests/Makefile
-git --git-dir=/home/yhx/Desktop/openvela/.repo/projects/contest2026_123_momohuhuhuluobudui.git --work-tree=/home/yhx/Desktop/openvela/contest2026_123_momohuhuhuluobudui diff --cached --check
-git --git-dir=/home/yhx/Desktop/openvela/.repo/projects/contest2026_123_momohuhuhuluobudui.git --work-tree=/home/yhx/Desktop/openvela/contest2026_123_momohuhuhuluobudui commit -m "test: guard ESP32-S3 SPI PSRAM DMA setup"
-```
+Expected: all existing tests pass before production changes.
 
 ### Task 2: Configure SPI TX GDMA for PSRAM in official NuttX source
 
@@ -112,13 +69,7 @@ Immediately after the successful `esp32s3_dma_request()` failure check in
                              ESP32S3_DMA_EXT_MEMBLK_64B);
 ```
 
-- [ ] **Step 2: Run the focused source guard and verify GREEN**
-
-Run `python3 app/agentguard/tests/test_spi_psram_dma_config.py`.
-
-Expected: `AgentGuard SPI PSRAM DMA config test: PASS`.
-
-- [ ] **Step 3: Verify the official-source diff is isolated**
+- [ ] **Step 2: Verify the official-source diff is isolated**
 
 Run:
 
@@ -130,7 +81,7 @@ git -C /home/yhx/Desktop/openvela/nuttx status --short -- arch/xtensa/src/esp32s
 
 Expected: exactly one modified official file and no whitespace error.
 
-- [ ] **Step 4: Commit the official patch locally and do not push**
+- [ ] **Step 3: Commit the official patch locally and do not push**
 
 ```bash
 git -C /home/yhx/Desktop/openvela/nuttx add arch/xtensa/src/esp32s3/esp32s3_spi.c
@@ -362,10 +313,10 @@ make -C app/agentguard/tests clean test_lcd_dma_buffer test_lcd_bounce
 app/agentguard/tests/test_lcd_dma_buffer
 app/agentguard/tests/test_lcd_bounce
 python3 app/agentguard/tests/test_lcd_dma_config.py
-python3 app/agentguard/tests/test_spi_psram_dma_config.py
 ```
 
-Expected: all four PASS messages.
+Expected: the LCD DMA buffer, LCD bounce, and LCD DMA configuration tests all
+print PASS.
 
 - [ ] **Step 5: Commit the application experiment**
 
