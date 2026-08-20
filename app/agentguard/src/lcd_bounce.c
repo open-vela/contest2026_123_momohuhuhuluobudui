@@ -15,12 +15,13 @@ int ag_lcd_bounce_area(const struct ag_lcd_bounce_ops *ops,
                        uint16_t visible_width,
                        uint16_t visible_height,
                        uint16_t *bounce,
-                       uint16_t bounce_rows,
+                       size_t bounce_pixel_capacity,
                        struct ag_lcd_timing_state *timing)
 {
   uint64_t started_ms = 0;
   uint64_t finished_ms = 0;
   uint16_t first_row;
+  size_t row_capacity;
   bool have_started;
   bool have_finished;
 
@@ -28,7 +29,8 @@ int ag_lcd_bounce_area(const struct ag_lcd_bounce_ops *ops,
   if (ops == NULL || ops->read_ms == NULL || ops->submit == NULL ||
       source == NULL || bounce == NULL || timing == NULL ||
       source_stride == 0 || source_height == 0 ||
-      visible_width == 0 || visible_height == 0 || bounce_rows == 0 ||
+      visible_width == 0 || visible_height == 0 ||
+      bounce_pixel_capacity < visible_width ||
       source_x > source_stride ||
       visible_width > source_stride - source_x ||
       source_y > source_height ||
@@ -39,11 +41,14 @@ int ag_lcd_bounce_area(const struct ag_lcd_bounce_ops *ops,
       return -1;
     }
 
+  row_capacity = bounce_pixel_capacity / visible_width;
   have_started = ops->read_ms(ops->context, &started_ms);
   for (first_row = 0; first_row < visible_height;)
     {
       uint16_t remaining = visible_height - first_row;
-      uint16_t row_count = remaining < bounce_rows ? remaining : bounce_rows;
+      uint16_t row_count = remaining < row_capacity
+                             ? remaining
+                             : (uint16_t)row_capacity;
       uint16_t row;
       int result;
 

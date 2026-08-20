@@ -60,13 +60,15 @@ static int test_submit(void *argument, const uint16_t *pixels,
   size_t pixel_count = (size_t)row_count * width;
 
   assert(index < TEST_MAX_SUBMITS);
-  assert(pixel_count <= TEST_MAX_PIXELS);
   context->first_rows[index] = first_row;
   context->first_columns[index] = first_column;
   context->row_counts[index] = row_count;
   context->widths[index] = width;
-  memcpy(context->snapshots[index], pixels,
-         pixel_count * sizeof(*pixels));
+  if (pixel_count <= TEST_MAX_PIXELS)
+    {
+      memcpy(context->snapshots[index], pixels,
+             pixel_count * sizeof(*pixels));
+    }
   return context->submit_results[index];
 }
 
@@ -112,6 +114,8 @@ int main(void)
     {0x1f00, 0x2000, 0x2100, 0x2900, 0x2a00, 0x2b00};
   static const uint16_t final_expected[3] =
     {0x1f00, 0x2000, 0x2100};
+  static uint16_t lcd_source[240 * 240];
+  static uint16_t preview_bounce[200 * 150];
   struct ag_lcd_timing_state timing;
   struct test_context context;
   struct ag_lcd_bounce_ops ops =
@@ -125,7 +129,7 @@ int main(void)
   test_context_reset(&context, 50, 51);
   ag_lcd_timing_reset(&timing);
   assert(ag_lcd_bounce_area(&ops, primary_source, 4, 1, 0, 0, 7, 9,
-                            4, 1, bounce, 1, &timing) == 0);
+                            4, 1, bounce, 4, &timing) == 0);
   assert(context.submit_count == 1);
   assert(context.first_columns[0] == 7 && context.first_rows[0] == 9);
   assert(memcmp(context.snapshots[0], primary_expected,
@@ -134,7 +138,7 @@ int main(void)
   test_context_reset(&context, 100, 135);
   ag_lcd_timing_reset(&timing);
   assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
-                            3, 4, bounce, 2, &timing) == 0);
+                            3, 4, bounce, 6, &timing) == 0);
   assert(context.submit_count == 2);
   assert(context.first_columns[0] == 7 && context.first_rows[0] == 9 &&
          context.row_counts[0] == 2);
@@ -149,7 +153,7 @@ int main(void)
 
   test_context_reset(&context, 200, 220);
   assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
-                            3, 3, bounce, 2, &timing) == 0);
+                            3, 3, bounce, 6, &timing) == 0);
   assert(context.submit_count == 2);
   assert(context.row_counts[0] == 2);
   assert(context.first_rows[1] == 11 && context.row_counts[1] == 1);
@@ -160,21 +164,38 @@ int main(void)
   test_context_reset(&context, 300, 340);
   context.submit_results[1] = -7;
   assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
-                            3, 4, bounce, 2, &timing) == -7);
+                            3, 4, bounce, 6, &timing) == -7);
   assert(context.submit_count == 2);
   assert(!timing.valid);
 
   test_context_reset(&context, 400, 440);
   context.clock_success[0] = false;
   assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
-                            3, 4, bounce, 2, &timing) == 0);
+                            3, 4, bounce, 6, &timing) == 0);
   assert(context.submit_count == 2);
   assert(!timing.valid);
 
   test_context_reset(&context, 500, 499);
   assert(ag_lcd_bounce_area(&ops, source, 6, 5, 1, 1, 7, 9,
-                            3, 4, bounce, 2, &timing) == 0);
+                            3, 4, bounce, 6, &timing) == 0);
   assert(!timing.valid);
+
+  test_context_reset(&context, 700, 708);
+  assert(ag_lcd_bounce_area(&ops, lcd_source, 240, 240,
+                            20, 45, 20, 45, 200, 150,
+                            preview_bounce, 200 * 150, &timing) == 0);
+  assert(context.submit_count == 1);
+  assert(context.first_columns[0] == 20 && context.first_rows[0] == 45);
+  assert(context.widths[0] == 200 && context.row_counts[0] == 150);
+
+  test_context_reset(&context, 800, 810);
+  assert(ag_lcd_bounce_area(&ops, lcd_source, 240, 240,
+                            0, 0, 0, 0, 240, 126,
+                            preview_bounce, 200 * 150, &timing) == 0);
+  assert(context.submit_count == 2);
+  assert(context.widths[0] == 240 && context.widths[1] == 240);
+  assert(context.row_counts[0] == 125 && context.row_counts[1] == 1);
+  assert(context.first_rows[0] == 0 && context.first_rows[1] == 125);
 
   test_context_reset(&context, 600, 640);
   assert_invalid(&ops, NULL, 6, 5, 1, 1, 3, 4,
@@ -184,7 +205,7 @@ int main(void)
                  bounce, 2, &timing, &context);
   test_context_reset(&context, 600, 640);
   assert_invalid(&ops, source, 6, 5, 1, 1, 3, 4,
-                 bounce, 0, &timing, &context);
+                 bounce, 2, &timing, &context);
   test_context_reset(&context, 600, 640);
   assert_invalid(&ops, source, 6, 5, 4, 1, 3, 4,
                  bounce, 2, &timing, &context);
