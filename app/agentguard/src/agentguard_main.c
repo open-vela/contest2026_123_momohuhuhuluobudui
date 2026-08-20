@@ -6,6 +6,7 @@
 #include "agentguard/display_preview.h"
 #include "agentguard/display_regions.h"
 #include "agentguard/display_ui.h"
+#include "agentguard/face_fallback.h"
 #include "agentguard/frame_timing.h"
 #include "agentguard/lcd_bounce.h"
 #include "agentguard/lcd_timing.h"
@@ -1224,6 +1225,9 @@ static int ag_run(void)
                                    AG_WIDTH, AG_HEIGHT,
                                    &vision_result) == 0)
         {
+          ag_face_fallback_apply_rgb565((uint16_t *)frame.m.userptr,
+                                        AG_WIDTH, AG_HEIGHT,
+                                        &vision_result);
           struct ag_face_box display_face = vision_result.primary_face;
 
           observation.monotonic_ms = ag_now_ms();
