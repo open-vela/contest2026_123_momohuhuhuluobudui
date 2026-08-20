@@ -123,6 +123,14 @@ static const struct ag_preview_area g_agentguard_preview_area =
   .height = AG_PREVIEW_HEIGHT
 };
 
+static const struct ag_preview_area g_agentguard_display_preview_area =
+{
+  .x = AG_LCD_WIDTH - AG_PREVIEW_X - AG_PREVIEW_WIDTH,
+  .y = AG_LCD_HEIGHT - AG_PREVIEW_Y - AG_PREVIEW_HEIGHT,
+  .width = AG_PREVIEW_WIDTH,
+  .height = AG_PREVIEW_HEIGHT
+};
+
 struct ag_video
 {
   int fd;
@@ -614,9 +622,9 @@ static void ag_display_frame(struct ag_display_worker *worker,
   result = ag_display_regions_update(&regions_ops,
                                      worker->screen_pixels,
                                      AG_LCD_WIDTH, AG_LCD_HEIGHT,
-                                     &g_agentguard_preview_area,
-                                     AG_UI_HEADER_HEIGHT,
+                                     &g_agentguard_display_preview_area,
                                      AG_UI_FOOTER_HEIGHT,
+                                     AG_UI_HEADER_HEIGHT,
                                      &worker->regions);
   have_finished = ag_lcd_read_ms(NULL, &finished_ms);
   if (result == 0 && have_started && have_finished)
@@ -713,10 +721,10 @@ static void *ag_display_worker_main(void *argument)
                             AG_CAMERA_FRAME_TIMEOUT_MS;
       ag_draw_face_box(worker->screen_pixels, AG_LCD_WIDTH, AG_LCD_HEIGHT,
                        &face, ag_ui_face_color(&status));
-      ag_ui_render_rgb565(worker->screen_pixels,
-                          AG_LCD_WIDTH, AG_LCD_HEIGHT,
-                          worker->display->width,
-                          worker->display->height, &status);
+      ag_ui_render_oriented_rgb565(worker->screen_pixels,
+                                   AG_LCD_WIDTH, AG_LCD_HEIGHT,
+                                   worker->display->width,
+                                   worker->display->height, &status);
       ag_display_frame(worker, &lcd_timing, &submit_timing);
 
       usleep(AG_DISPLAY_REFRESH_US);
@@ -764,7 +772,7 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
          AG_LCD_HUD_PIXELS * sizeof(uint16_t));
   worker->regions.header_snapshot = worker->hud_pixels;
   worker->regions.footer_snapshot =
-    worker->hud_pixels + AG_LCD_HEADER_PIXELS;
+    worker->hud_pixels + AG_LCD_FOOTER_PIXELS;
   if (ag_thread_attr_init_priority(&attr, AG_DISPLAY_THREAD_PRIORITY) != 0)
     {
       goto fail_buffers;

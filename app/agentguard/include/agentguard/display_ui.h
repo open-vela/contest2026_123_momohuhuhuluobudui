@@ -90,5 +90,10 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
                          uint16_t frame_height, uint16_t view_width,
                          uint16_t view_height,
                          const struct ag_ui_status *status);
+void ag_ui_render_oriented_rgb565(uint16_t *pixels, uint16_t frame_width,
+                                  uint16_t frame_height,
+                                  uint16_t view_width,
+                                  uint16_t view_height,
+                                  const struct ag_ui_status *status);
 
 #endif

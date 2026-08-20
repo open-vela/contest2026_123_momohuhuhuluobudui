@@ -12,6 +12,7 @@
 #define VIEW_X 40
 
 static uint16_t frame[WIDTH * HEIGHT];
+static uint16_t oriented_frame[HEIGHT * HEIGHT];
 
 int main(void)
 {
@@ -163,6 +164,15 @@ int main(void)
   assert(rotation_sample[3] == 3);
   assert(rotation_sample[4] == 2);
   assert(rotation_sample[5] == 1);
+
+  memset(&status, 0, sizeof(status));
+  memset(oriented_frame, 0, sizeof(oriented_frame));
+  oriented_frame[100 * HEIGHT + 100] = 0x1234;
+  ag_ui_render_oriented_rgb565(oriented_frame, HEIGHT, HEIGHT,
+                               HEIGHT, HEIGHT, &status);
+  assert(oriented_frame[139 * HEIGHT + 139] == 0x1234);
+  assert(oriented_frame[235 * HEIGHT + 235] ==
+         ag_ui_face_color(&status));
 
   memset(&status, 0, sizeof(status));
   memset(frame, 0x55, sizeof(frame));

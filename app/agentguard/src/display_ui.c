@@ -621,3 +621,21 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
              detail_text, status->privacy_enabled ? AG_UI_MAGENTA :
              AG_UI_WHITE);
 }
+
+void ag_ui_render_oriented_rgb565(uint16_t *pixels, uint16_t frame_width,
+                                  uint16_t frame_height,
+                                  uint16_t view_width,
+                                  uint16_t view_height,
+                                  const struct ag_ui_status *status)
+{
+  if (pixels == NULL || status == NULL || view_width < 120 ||
+      view_height < AG_UI_HEADER_HEIGHT + AG_UI_FOOTER_HEIGHT ||
+      view_width > frame_width || view_height > frame_height)
+    {
+      return;
+    }
+
+  ag_ui_render_rgb565(pixels, frame_width, frame_height,
+                      view_width, view_height, status);
+  ag_ui_rotate_180_rgb565(pixels, frame_width, frame_height);
+}
