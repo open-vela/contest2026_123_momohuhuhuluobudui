@@ -7,6 +7,7 @@
 #include "agentguard/display_regions.h"
 #include "agentguard/display_ui.h"
 #include "agentguard/face_fallback.h"
+#include "agentguard/face_presence.h"
 #include "agentguard/frame_timing.h"
 #include "agentguard/lcd_bounce.h"
 #include "agentguard/lcd_timing.h"
@@ -106,6 +107,7 @@ extern int board_i2c_init(void);
 #define AG_CAMERA_FRAME_TIMEOUT_MS 3000
 #define AG_CAMERA_RESTART_DELAY_US 250000
 #define AG_CAMERA_WATCHDOG_POLL_US 50000
+#define AG_FACE_PRESENCE_HOLD_MS 1500
 #define AG_PC_CONNECT_TIMEOUT_MS 500
 #define AG_LOG_COMPACT_INTERVAL_MS (6ull * 60ull * 60ull * 1000ull)
 
@@ -1089,6 +1091,7 @@ static int ag_run(void)
   struct ag_display display;
   struct ag_vision_context vision;
   struct ag_vision_result vision_result;
+  struct ag_face_presence_state face_presence;
   struct ag_config config;
   struct ag_state state;
   struct ag_observation observation;
@@ -1187,6 +1190,7 @@ static int ag_run(void)
   led_fd = open(AG_LED_PATH, O_WRONLY);
   button_fd = open(AG_BUTTON_PATH, O_RDONLY | O_NONBLOCK);
   ag_vision_init(&vision);
+  ag_face_presence_reset(&face_presence);
   ag_default_config(&config);
   ag_init(&state);
   ag_frame_timing_reset(&frame_timing);
@@ -1228,6 +1232,9 @@ static int ag_run(void)
           ag_face_fallback_apply_rgb565((uint16_t *)frame.m.userptr,
                                         AG_WIDTH, AG_HEIGHT,
                                         &vision_result);
+          ag_face_presence_filter(&face_presence, ag_now_ms(),
+                                  AG_FACE_PRESENCE_HOLD_MS,
+                                  &vision_result);
           struct ag_face_box display_face = vision_result.primary_face;
 
           observation.monotonic_ms = ag_now_ms();
