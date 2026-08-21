@@ -21,9 +21,14 @@ struct ag_display_regions_state
 {
   uint16_t *header_snapshot;
   uint16_t *footer_snapshot;
+  uint32_t diagnostic_generation;
   bool header_valid;
   bool footer_valid;
+  bool diagnostic_generation_valid;
 };
+
+void ag_display_regions_note_generation(
+  struct ag_display_regions_state *state, bool valid, uint32_t generation);
 
 int ag_display_regions_update(const struct ag_display_regions_ops *ops,
                               const uint16_t *pixels,

@@ -52,7 +52,7 @@ static void reset_context(struct submit_context *context)
 int main(void)
 {
   uint16_t pixels[36];
-  uint16_t header_snapshot[6];
+  uint16_t header_snapshot[12];
   uint16_t footer_snapshot[12];
   const struct ag_preview_area preview =
   {
@@ -76,25 +76,30 @@ int main(void)
   memset(pixels, 0, sizeof(pixels));
   reset_context(&context);
   assert(ag_display_regions_update(&ops, pixels, 6, 6, &preview,
-                                   1, 2, &state) == 0);
+                                   1, 2, &state) == -1);
+  assert(context.call_count == 0);
+
+  reset_context(&context);
+  assert(ag_display_regions_update(&ops, pixels, 6, 6, &preview,
+                                   2, 2, &state) == 0);
   assert(context.call_count == 3);
   assert(context.calls[0].x == 1 && context.calls[0].y == 2 &&
          context.calls[0].width == 4 && context.calls[0].height == 2);
   assert(context.calls[1].x == 0 && context.calls[1].y == 0 &&
-         context.calls[1].width == 6 && context.calls[1].height == 1);
+         context.calls[1].width == 6 && context.calls[1].height == 2);
   assert(context.calls[2].x == 0 && context.calls[2].y == 4 &&
          context.calls[2].width == 6 && context.calls[2].height == 2);
   assert(state.header_valid && state.footer_valid);
 
   reset_context(&context);
   assert(ag_display_regions_update(&ops, pixels, 6, 6, &preview,
-                                   1, 2, &state) == 0);
+                                   2, 2, &state) == 0);
   assert(context.call_count == 1);
 
   pixels[2] = 11;
   reset_context(&context);
   assert(ag_display_regions_update(&ops, pixels, 6, 6, &preview,
-                                   1, 2, &state) == 0);
+                                   2, 2, &state) == 0);
   assert(context.call_count == 2);
   assert(context.calls[1].x == 2 && context.calls[1].y == 0 &&
          context.calls[1].width == 1 && context.calls[1].height == 1);
@@ -102,7 +107,7 @@ int main(void)
   pixels[32] = 22;
   reset_context(&context);
   assert(ag_display_regions_update(&ops, pixels, 6, 6, &preview,
-                                   1, 2, &state) == 0);
+                                   2, 2, &state) == 0);
   assert(context.call_count == 2);
   assert(context.calls[1].x == 2 && context.calls[1].y == 5 &&
          context.calls[1].width == 1 && context.calls[1].height == 1);
@@ -111,9 +116,29 @@ int main(void)
   reset_context(&context);
   context.fail_call = 1;
   assert(ag_display_regions_update(&ops, pixels, 6, 6, &preview,
-                                   1, 2, &state) == -7);
+                                   2, 2, &state) == -7);
   assert(context.call_count == 2);
   assert(!state.header_valid);
+
+  state.header_valid = true;
+  state.footer_valid = true;
+  ag_display_regions_note_generation(&state, false, 0);
+  assert(state.header_valid && state.footer_valid);
+  assert(!state.diagnostic_generation_valid);
+
+  ag_display_regions_note_generation(&state, true, 12);
+  assert(!state.header_valid && !state.footer_valid);
+  assert(state.diagnostic_generation_valid);
+  assert(state.diagnostic_generation == 12);
+
+  state.header_valid = true;
+  state.footer_valid = true;
+  ag_display_regions_note_generation(&state, true, 12);
+  assert(state.header_valid && state.footer_valid);
+
+  ag_display_regions_note_generation(&state, true, 13);
+  assert(!state.header_valid && !state.footer_valid);
+  assert(state.diagnostic_generation == 13);
 
   puts("AgentGuard display region tests: PASS");
   return 0;

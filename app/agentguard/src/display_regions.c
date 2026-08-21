@@ -5,6 +5,30 @@
 
 #include <stddef.h>
 
+void ag_display_regions_note_generation(
+  struct ag_display_regions_state *state, bool valid, uint32_t generation)
+{
+  if (state == NULL)
+    {
+      return;
+    }
+
+  if (!valid)
+    {
+      state->diagnostic_generation_valid = false;
+      return;
+    }
+
+  if (!state->diagnostic_generation_valid ||
+      state->diagnostic_generation != generation)
+    {
+      state->header_valid = false;
+      state->footer_valid = false;
+      state->diagnostic_generation = generation;
+      state->diagnostic_generation_valid = true;
+    }
+}
+
 int ag_display_regions_update(const struct ag_display_regions_ops *ops,
                               const uint16_t *pixels,
                               uint16_t stride,
@@ -28,7 +52,9 @@ int ag_display_regions_update(const struct ag_display_regions_ops *ops,
       (uint32_t)preview->x + preview->width > stride ||
       (uint32_t)preview->y + preview->height > source_height ||
       header_height == 0 || footer_height == 0 ||
-      (uint32_t)header_height + footer_height > source_height)
+      header_height != preview->y ||
+      (uint32_t)preview->y + preview->height + footer_height !=
+        source_height)
     {
       return -1;
     }

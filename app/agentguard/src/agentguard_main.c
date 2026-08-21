@@ -91,9 +91,17 @@ extern int board_i2c_init(void);
   (AG_UI_HEADER_HEIGHT + \
    (AG_LCD_HEIGHT - AG_UI_HEADER_HEIGHT - AG_UI_FOOTER_HEIGHT - \
     AG_PREVIEW_HEIGHT) / 2)
-#define AG_LCD_HEADER_PIXELS (AG_LCD_WIDTH * AG_UI_HEADER_HEIGHT)
-#define AG_LCD_FOOTER_PIXELS (AG_LCD_WIDTH * AG_UI_FOOTER_HEIGHT)
-#define AG_LCD_HUD_PIXELS (AG_LCD_HEADER_PIXELS + AG_LCD_FOOTER_PIXELS)
+#define AG_DISPLAY_PREVIEW_Y \
+  (AG_LCD_HEIGHT - AG_PREVIEW_Y - AG_PREVIEW_HEIGHT)
+#define AG_LCD_TOP_REGION_HEIGHT AG_DISPLAY_PREVIEW_Y
+#define AG_LCD_BOTTOM_REGION_HEIGHT \
+  (AG_LCD_HEIGHT - AG_DISPLAY_PREVIEW_Y - AG_PREVIEW_HEIGHT)
+#define AG_LCD_TOP_REGION_PIXELS \
+  (AG_LCD_WIDTH * AG_LCD_TOP_REGION_HEIGHT)
+#define AG_LCD_BOTTOM_REGION_PIXELS \
+  (AG_LCD_WIDTH * AG_LCD_BOTTOM_REGION_HEIGHT)
+#define AG_LCD_HUD_PIXELS \
+  (AG_LCD_TOP_REGION_PIXELS + AG_LCD_BOTTOM_REGION_PIXELS)
 /* Keep this allocation larger than the remaining internal DRAM region so
  * NuttX places the non-DMA HUD history in external RAM. */
 #define AG_LCD_HUD_ALLOCATION_BYTES (64 * 1024)
@@ -117,6 +125,12 @@ static uint16_t g_agentguard_lcd_bounce[AG_LCD_BOUNCE_PIXELS]
 _Static_assert(CONFIG_ESP32S3_SPI_DMA_BUFSIZE %
                (AG_LCD_WIDTH * sizeof(uint16_t)) == 0,
                "LCD DMA buffer must contain whole display rows");
+_Static_assert(AG_LCD_TOP_REGION_HEIGHT + AG_PREVIEW_HEIGHT +
+               AG_LCD_BOTTOM_REGION_HEIGHT == AG_LCD_HEIGHT,
+               "LCD regions must cover every display row");
+_Static_assert(AG_LCD_HUD_PIXELS * sizeof(uint16_t) <=
+               AG_LCD_HUD_ALLOCATION_BYTES,
+               "LCD HUD history must fit its allocation");
 
 static const struct ag_preview_area g_agentguard_preview_area =
 {
@@ -129,7 +143,7 @@ static const struct ag_preview_area g_agentguard_preview_area =
 static const struct ag_preview_area g_agentguard_display_preview_area =
 {
   .x = AG_LCD_WIDTH - AG_PREVIEW_X - AG_PREVIEW_WIDTH,
-  .y = AG_LCD_HEIGHT - AG_PREVIEW_Y - AG_PREVIEW_HEIGHT,
+  .y = AG_DISPLAY_PREVIEW_Y,
   .width = AG_PREVIEW_WIDTH,
   .height = AG_PREVIEW_HEIGHT
 };
@@ -629,8 +643,8 @@ static void ag_display_frame(struct ag_display_worker *worker,
                                      worker->screen_pixels,
                                      AG_LCD_WIDTH, AG_LCD_HEIGHT,
                                      &g_agentguard_display_preview_area,
-                                     AG_UI_FOOTER_HEIGHT,
-                                     AG_UI_HEADER_HEIGHT,
+                                     AG_LCD_TOP_REGION_HEIGHT,
+                                     AG_LCD_BOTTOM_REGION_HEIGHT,
                                      &worker->regions);
   have_finished = ag_lcd_read_ms(NULL, &finished_ms);
   if (result == 0 && have_started && have_finished)
@@ -731,6 +745,9 @@ static void *ag_display_worker_main(void *argument)
                                    AG_LCD_WIDTH, AG_LCD_HEIGHT,
                                    worker->display->width,
                                    worker->display->height, &status);
+      ag_display_regions_note_generation(
+        &worker->regions, status.face_diagnostics_valid,
+        status.face_diagnostics_generation);
       ag_display_frame(worker, &lcd_timing, &submit_timing);
 
       usleep(AG_DISPLAY_REFRESH_US);
@@ -778,7 +795,7 @@ static int ag_display_worker_start(struct ag_display_worker *worker,
          AG_LCD_HUD_PIXELS * sizeof(uint16_t));
   worker->regions.header_snapshot = worker->hud_pixels;
   worker->regions.footer_snapshot =
-    worker->hud_pixels + AG_LCD_FOOTER_PIXELS;
+    worker->hud_pixels + AG_LCD_TOP_REGION_PIXELS;
   if (ag_thread_attr_init_priority(&attr, AG_DISPLAY_THREAD_PRIORITY) != 0)
     {
       goto fail_buffers;
