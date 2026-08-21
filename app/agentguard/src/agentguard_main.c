@@ -393,6 +393,9 @@ static int ag_video_restart(struct ag_video *video,
                             struct ag_display_worker *display_worker,
                             struct ag_frame_timing_state *frame_timing)
 {
+#ifdef CONFIG_AGENTGUARD_ESP_DL
+  ag_vision_model_reset_face_diagnostics();
+#endif
   ag_frame_timing_reset(frame_timing);
   ag_video_close(video);
   usleep(AG_CAMERA_RESTART_DELAY_US);
@@ -1348,6 +1351,27 @@ int main(int argc, char *argv[])
   if (argc == 2 && strcmp(argv[1], "prune") == 0)
     {
       return ag_prune_log();
+    }
+
+  if (argc == 2 && strcmp(argv[1], "face-diag") == 0)
+    {
+#ifdef CONFIG_AGENTGUARD_ESP_DL
+      struct ag_face_diag_snapshot diagnostics;
+      char output[768];
+
+      if (!ag_vision_model_get_face_diagnostics(&diagnostics) ||
+          !ag_face_diag_format(output, sizeof(output), &diagnostics))
+        {
+          puts("face_diag=unavailable");
+          return EXIT_FAILURE;
+        }
+
+      fputs(output, stdout);
+      return EXIT_SUCCESS;
+#else
+      puts("face_diag=unavailable");
+      return EXIT_FAILURE;
+#endif
     }
 
   if (argc > 1 && strcmp(argv[1], "command") == 0)

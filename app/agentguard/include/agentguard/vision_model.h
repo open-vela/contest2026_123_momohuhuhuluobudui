@@ -3,8 +3,10 @@
 #ifndef AGENTGUARD_VISION_MODEL_H
 #define AGENTGUARD_VISION_MODEL_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
+#include "agentguard/face_diagnostics.h"
 #include "agentguard/vision.h"
 
 #ifdef __cplusplus
@@ -33,6 +35,9 @@ int ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
                                    struct ag_vision_result *result);
 void ag_vision_model_get_diagnostics(
   struct ag_vision_model_diagnostics *diagnostics);
+bool ag_vision_model_get_face_diagnostics(
+  struct ag_face_diag_snapshot *diagnostics);
+void ag_vision_model_reset_face_diagnostics(void);
 
 #ifdef __cplusplus
 }

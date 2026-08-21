@@ -2,7 +2,6 @@
 
 #include "agentguard/vision_model.h"
 #include "agentguard/espdl_tie_selftest.h"
-#include "agentguard/espdl_pixel_mode.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -23,22 +22,18 @@ constexpr float kFaceScoreThreshold =
 constexpr uint32_t kCameraImageCaps =
   dl::image::DL_IMAGE_CAP_RGB_SWAP |
   dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN;
-constexpr uint32_t kPixelModeCaps[AG_ESPDL_PIXEL_MODE_COUNT] =
-{
-  0,
-  dl::image::DL_IMAGE_CAP_RGB_SWAP,
-  dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN,
-  dl::image::DL_IMAGE_CAP_RGB_SWAP |
-    dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN,
-};
 
 extern "C" const uint8_t _binary_human_face_rgb565be_start[];
 
 HumanFaceDetect *g_detector;
 ag_vision_result g_cached_result;
 unsigned int g_frame_counter;
-unsigned int g_live_inference_counter;
 ag_vision_model_diagnostics g_diagnostics;
+ag_face_diag_store g_face_diag_store = AG_FACE_DIAG_STORE_INITIALIZER;
+ag_rgb565_fingerprint g_reference_raw;
+ag_face_detector_trace g_reference_trace;
+ag_face_diag_snapshot g_previous_snapshot;
+uint32_t g_face_diag_sequence;
 
 uint64_t monotonic_ms()
 {
@@ -80,6 +75,20 @@ ag_vision_model_get_diagnostics(
     }
 }
 
+extern "C" bool
+ag_vision_model_get_face_diagnostics(
+  struct ag_face_diag_snapshot *diagnostics)
+{
+  return ag_face_diag_get(&g_face_diag_store, diagnostics);
+}
+
+extern "C" void ag_vision_model_reset_face_diagnostics(void)
+{
+  ag_face_diag_clear(&g_face_diag_store);
+  std::memset(&g_previous_snapshot, 0, sizeof(g_previous_snapshot));
+  g_face_diag_sequence = 0;
+}
+
 extern "C" int
 ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
                                uint16_t height,
@@ -110,6 +119,7 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
       g_detector->set_score_thr(kFaceScoreThreshold, 0);
       g_detector->set_score_thr(kFaceScoreThreshold, 1);
       g_detector->set_image_caps(kCameraImageCaps);
+      g_diagnostics.pixel_mode_scores[0] = 3;
 
       dl::image::img_t reference_image = {
         .data = const_cast<uint8_t *>(_binary_human_face_rgb565be_start),
@@ -117,8 +127,13 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
         .height = 240,
         .pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB565,
       };
+      ag_fingerprint_rgb565(
+        reinterpret_cast<const uint16_t *>(
+          _binary_human_face_rgb565be_start),
+        320, 240, &g_reference_raw);
       std::list<dl::detect::result_t> &reference_detections =
         g_detector->run(reference_image);
+      g_detector->get_last_trace(&g_reference_trace);
       int16_t reference_input_min;
       int16_t reference_input_max;
       g_detector->get_last_msr_signal(&reference_input_min,
@@ -140,14 +155,23 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
     .height = height,
     .pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB565,
   };
-  unsigned int pixel_mode =
-    ag_espdl_pixel_mode(g_live_inference_counter++);
-  g_detector->set_image_caps(kPixelModeCaps[pixel_mode]);
-  g_diagnostics.pixel_mode_scores[0] =
-    static_cast<uint8_t>(pixel_mode);
+  ag_rgb565_fingerprint raw_fingerprint = {};
+  ag_face_detector_trace live_trace = {};
+  ag_face_diag_snapshot snapshot = {};
+
+  ag_fingerprint_rgb565(pixels, width, height, &raw_fingerprint);
+  g_detector->set_image_caps(kCameraImageCaps);
   uint64_t inference_started_ms = monotonic_ms();
   std::list<dl::detect::result_t> &detections = g_detector->run(image);
   uint64_t inference_finished_ms = monotonic_ms();
+  g_detector->get_last_trace(&live_trace);
+  g_face_diag_sequence++;
+  ag_face_diag_prepare_snapshot(
+    g_previous_snapshot.valid ? &g_previous_snapshot : nullptr,
+    g_face_diag_sequence, &g_reference_raw, &raw_fingerprint,
+    &g_reference_trace, &live_trace, &snapshot);
+  ag_face_diag_publish(&g_face_diag_store, &snapshot);
+  g_previous_snapshot = snapshot;
   ag_vision_result next = {};
   int largest_area = 0;
 

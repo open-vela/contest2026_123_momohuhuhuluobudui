@@ -205,6 +205,35 @@ void ag_face_diag_clear(struct ag_face_diag_store *store)
     }
 }
 
+void ag_face_diag_prepare_snapshot(
+  const struct ag_face_diag_snapshot *previous, uint32_t sequence,
+  const struct ag_rgb565_fingerprint *reference_raw,
+  const struct ag_rgb565_fingerprint *raw,
+  const struct ag_face_detector_trace *reference,
+  const struct ag_face_detector_trace *live,
+  struct ag_face_diag_snapshot *output)
+{
+  if (output == NULL)
+    {
+      return;
+    }
+
+  memset(output, 0, sizeof(*output));
+  if (reference_raw == NULL || raw == NULL || reference == NULL ||
+      live == NULL)
+    {
+      return;
+    }
+
+  output->inference_sequence = sequence;
+  output->reference_raw = *reference_raw;
+  output->raw = *raw;
+  output->reference = *reference;
+  output->live = *live;
+  output->valid = true;
+  ag_face_diag_mark_changes(previous, output);
+}
+
 bool ag_face_diag_format(char *buffer, size_t size,
                          const struct ag_face_diag_snapshot *snapshot)
 {

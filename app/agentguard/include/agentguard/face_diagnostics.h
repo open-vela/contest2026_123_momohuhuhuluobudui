@@ -79,6 +79,13 @@ void ag_face_diag_publish(struct ag_face_diag_store *store,
 bool ag_face_diag_get(struct ag_face_diag_store *store,
                       struct ag_face_diag_snapshot *snapshot);
 void ag_face_diag_clear(struct ag_face_diag_store *store);
+void ag_face_diag_prepare_snapshot(
+  const struct ag_face_diag_snapshot *previous, uint32_t sequence,
+  const struct ag_rgb565_fingerprint *reference_raw,
+  const struct ag_rgb565_fingerprint *raw,
+  const struct ag_face_detector_trace *reference,
+  const struct ag_face_detector_trace *live,
+  struct ag_face_diag_snapshot *output);
 bool ag_face_diag_format(char *buffer, size_t size,
                          const struct ag_face_diag_snapshot *snapshot);
 

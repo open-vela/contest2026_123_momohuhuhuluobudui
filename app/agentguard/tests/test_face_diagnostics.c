@@ -114,6 +114,60 @@ static void test_change_flags_require_comparable_generations(void)
   ag_face_diag_mark_changes(&previous, NULL);
 }
 
+static void test_snapshot_assembly_compares_only_same_stage_hashes(void)
+{
+  struct ag_rgb565_fingerprint reference_raw = {0};
+  struct ag_rgb565_fingerprint raw = {0};
+  struct ag_face_detector_trace reference = {0};
+  struct ag_face_detector_trace live = {0};
+  struct ag_face_diag_snapshot first;
+  struct ag_face_diag_snapshot second;
+
+  reference_raw.valid = true;
+  reference_raw.full_hash = UINT32_C(0x01020304);
+  raw.valid = true;
+  raw.full_hash = UINT32_C(0x11111111);
+  reference.valid = true;
+  reference.msr_candidates = 2;
+  live.valid = true;
+  live.final_faces = 1;
+  live.msr_input.valid = true;
+  live.msr_input.type = AG_FINGERPRINT_I8;
+  live.msr_input.elements = 4;
+  live.msr_input.hash = UINT32_C(0x22222222);
+
+  ag_face_diag_prepare_snapshot(NULL, 1, &reference_raw, &raw,
+                                &reference, &live, &first);
+  assert(first.valid);
+  assert(first.inference_sequence == 1);
+  assert(first.reference_raw.full_hash == UINT32_C(0x01020304));
+  assert(first.reference.msr_candidates == 2);
+  assert(first.live.final_faces == 1);
+  assert(!first.raw_change_valid);
+  assert(!first.input_change_valid);
+
+  raw.full_hash = UINT32_C(0x11111112);
+  raw.top_hash = UINT32_C(0xaaaaaaaa);
+  live.msr_input.hash = UINT32_C(0x22222223);
+  live.msr_score0.hash = UINT32_C(0xbbbbbbbb);
+  ag_face_diag_prepare_snapshot(&first, 2, &reference_raw, &raw,
+                                &reference, &live, &second);
+  assert(second.valid);
+  assert(second.inference_sequence == 2);
+  assert(second.raw_change_valid && second.raw_changed);
+  assert(second.input_change_valid && second.input_changed);
+  assert(second.raw.top_hash == UINT32_C(0xaaaaaaaa));
+  assert(second.live.msr_score0.hash == UINT32_C(0xbbbbbbbb));
+
+  memset(&second, 0xa5, sizeof(second));
+  ag_face_diag_prepare_snapshot(&first, 3, &reference_raw, NULL,
+                                &reference, &live, &second);
+  assert(memcmp(&second, &(struct ag_face_diag_snapshot){0},
+                sizeof(second)) == 0);
+  ag_face_diag_prepare_snapshot(&first, 3, &reference_raw, &raw,
+                                &reference, &live, NULL);
+}
+
 static void test_format_reports_fixed_order_snapshot_without_overflow(void)
 {
   struct ag_face_diag_snapshot snapshot = {0};
@@ -160,6 +214,7 @@ int main(void)
   test_trace_records_only_first_four_mnp_attempts();
   test_store_copies_complete_valid_snapshots();
   test_change_flags_require_comparable_generations();
+  test_snapshot_assembly_compares_only_same_stage_hashes();
   test_format_reports_fixed_order_snapshot_without_overflow();
   puts("AgentGuard face diagnostics tests: PASS");
   return 0;
