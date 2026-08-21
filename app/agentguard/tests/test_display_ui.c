@@ -81,6 +81,17 @@ int main(void)
                             true, true, false);
   assert(strcmp(diagnostics, "D:42 K:10") == 0);
 
+  ag_ui_format_face_diagnostics(diagnostics, sizeof(diagnostics),
+                                12, true, true, true, false,
+                                1, 0, 0);
+  assert(strcmp(diagnostics, "G:12 R:1 I:0 M:1/0 F:0") == 0);
+
+  ag_ui_format_face_diagnostics(diagnostics, sizeof(diagnostics),
+                                12345, false, false, false, false,
+                                255, 255, 12);
+  assert(strcmp(diagnostics,
+                "G:999+ R:- I:- M:99+/99+ F:9+") == 0);
+
   memset(&status, 0, sizeof(status));
   status.tie_selftest_stage = 42;
   status.tie_selftest_valid = true;
@@ -110,6 +121,24 @@ int main(void)
   status.lcd_write_ms = 160;
   status.lcd_submit_sum_ms = 145;
   status.lcd_submit_max_ms = 80;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "P:2 S:57 M:3 F:1 AI:847") == 0);
+
+  status.face_diagnostics_valid = true;
+  status.face_diagnostics_generation = 12;
+  status.face_diagnostics_raw_change_valid = true;
+  status.face_diagnostics_raw_changed = true;
+  status.face_diagnostics_input_change_valid = true;
+  status.face_diagnostics_input_changed = false;
+  status.face_diagnostics_mnp_attempts = 1;
+  status.face_diagnostics_mnp_accepted = 0;
+  status.face_diagnostics_faces = 0;
+  assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
+                                        &status));
+  assert(strcmp(diagnostics, "G:12 R:1 I:0 M:1/0 F:0") == 0);
+
+  status.face_diagnostics_valid = false;
   assert(ag_ui_format_diagnostic_detail(diagnostics, sizeof(diagnostics),
                                         &status));
   assert(strcmp(diagnostics, "P:2 S:57 M:3 F:1 AI:847") == 0);

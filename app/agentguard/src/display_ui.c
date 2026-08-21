@@ -264,12 +264,86 @@ void ag_ui_format_tie_progress(char *buffer, size_t buffer_size,
     }
 }
 
+void ag_ui_format_face_diagnostics(
+  char *buffer, size_t buffer_size, uint32_t generation,
+  bool raw_change_valid, bool raw_changed,
+  bool input_change_valid, bool input_changed,
+  uint8_t mnp_attempts, uint8_t mnp_accepted, uint8_t faces)
+{
+  char generation_text[5];
+  char attempts_text[4];
+  char accepted_text[4];
+  char faces_text[3];
+
+  if (buffer == NULL || buffer_size == 0)
+    {
+      return;
+    }
+
+  if (generation > 999)
+    {
+      snprintf(generation_text, sizeof(generation_text), "999+");
+    }
+  else
+    {
+      snprintf(generation_text, sizeof(generation_text), "%lu",
+               (unsigned long)generation);
+    }
+
+  if (mnp_attempts > 99)
+    {
+      snprintf(attempts_text, sizeof(attempts_text), "99+");
+    }
+  else
+    {
+      snprintf(attempts_text, sizeof(attempts_text), "%u", mnp_attempts);
+    }
+
+  if (mnp_accepted > 99)
+    {
+      snprintf(accepted_text, sizeof(accepted_text), "99+");
+    }
+  else
+    {
+      snprintf(accepted_text, sizeof(accepted_text), "%u", mnp_accepted);
+    }
+
+  if (faces > 9)
+    {
+      snprintf(faces_text, sizeof(faces_text), "9+");
+    }
+  else
+    {
+      snprintf(faces_text, sizeof(faces_text), "%u", faces);
+    }
+
+  snprintf(buffer, buffer_size, "G:%s R:%c I:%c M:%s/%s F:%s",
+           generation_text,
+           !raw_change_valid ? '-' : raw_changed ? '1' : '0',
+           !input_change_valid ? '-' : input_changed ? '1' : '0',
+           attempts_text, accepted_text, faces_text);
+}
+
 bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
                                     const struct ag_ui_status *status)
 {
   if (buffer == NULL || buffer_size == 0 || status == NULL)
     {
       return false;
+    }
+
+  if (status->face_diagnostics_valid)
+    {
+      ag_ui_format_face_diagnostics(
+        buffer, buffer_size, status->face_diagnostics_generation,
+        status->face_diagnostics_raw_change_valid,
+        status->face_diagnostics_raw_changed,
+        status->face_diagnostics_input_change_valid,
+        status->face_diagnostics_input_changed,
+        status->face_diagnostics_mnp_attempts,
+        status->face_diagnostics_mnp_accepted,
+        status->face_diagnostics_faces);
+      return true;
     }
 
   if (status->lcd_submit_timing_valid &&

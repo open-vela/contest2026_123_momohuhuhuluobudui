@@ -35,6 +35,15 @@ struct ag_ui_status
   uint32_t lcd_write_ms;
   uint32_t lcd_submit_sum_ms;
   uint32_t lcd_submit_max_ms;
+  uint32_t face_diagnostics_generation;
+  uint8_t face_diagnostics_mnp_attempts;
+  uint8_t face_diagnostics_mnp_accepted;
+  uint8_t face_diagnostics_faces;
+  bool face_diagnostics_valid;
+  bool face_diagnostics_raw_change_valid;
+  bool face_diagnostics_raw_changed;
+  bool face_diagnostics_input_change_valid;
+  bool face_diagnostics_input_changed;
   bool model_diagnostics_valid;
   bool frame_timing_valid;
   bool lcd_write_valid;
@@ -72,6 +81,11 @@ void ag_ui_format_tie_selftest(char *buffer, size_t buffer_size,
 void ag_ui_format_tie_progress(char *buffer, size_t buffer_size,
                                uint8_t stage, bool valid,
                                bool ram_pass, bool flash_pass);
+void ag_ui_format_face_diagnostics(
+  char *buffer, size_t buffer_size, uint32_t generation,
+  bool raw_change_valid, bool raw_changed,
+  bool input_change_valid, bool input_changed,
+  uint8_t mnp_attempts, uint8_t mnp_accepted, uint8_t faces);
 bool ag_ui_format_diagnostic_detail(char *buffer, size_t buffer_size,
                                     const struct ag_ui_status *status);
 void ag_ui_format_model_signal(char *buffer, size_t buffer_size,

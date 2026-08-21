@@ -1101,6 +1101,7 @@ static int ag_run(void)
   struct ag_ui_status ui_status;
 #ifdef CONFIG_AGENTGUARD_ESP_DL
   struct ag_vision_model_diagnostics model_diagnostics;
+  struct ag_face_diag_snapshot face_diagnostics;
 #endif
   struct ag_camera_watchdog watchdog;
   struct ag_display_worker display_worker;
@@ -1274,6 +1275,26 @@ static int ag_run(void)
           ui_status.tie_ram_pass = model_diagnostics.tie_ram_pass != 0;
           ui_status.tie_flash_pass = model_diagnostics.tie_flash_pass != 0;
           ui_status.inference_ms = model_diagnostics.inference_ms;
+          if (ag_vision_model_get_face_diagnostics(&face_diagnostics))
+            {
+              ui_status.face_diagnostics_valid = true;
+              ui_status.face_diagnostics_generation =
+                face_diagnostics.inference_sequence;
+              ui_status.face_diagnostics_raw_change_valid =
+                face_diagnostics.raw_change_valid;
+              ui_status.face_diagnostics_raw_changed =
+                face_diagnostics.raw_changed;
+              ui_status.face_diagnostics_input_change_valid =
+                face_diagnostics.input_change_valid;
+              ui_status.face_diagnostics_input_changed =
+                face_diagnostics.input_changed;
+              ui_status.face_diagnostics_mnp_attempts =
+                face_diagnostics.live.mnp_attempts;
+              ui_status.face_diagnostics_mnp_accepted =
+                face_diagnostics.live.mnp_accepted;
+              ui_status.face_diagnostics_faces =
+                face_diagnostics.live.final_faces;
+            }
 #endif
           ui_status.calibrated = vision.stable_frames >= 20;
           ui_status.reminders_paused = state.reminders_paused;
