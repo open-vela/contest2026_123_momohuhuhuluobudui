@@ -5,6 +5,28 @@
 
 #include "agentguard/face_diagnostics.h"
 
+static void test_tensor_adapter_accepts_only_signed_i8_and_i16(void)
+{
+  const int8_t i8[4] = {0, 1, 2, -1};
+  const int16_t i16[2] = {-2, 258};
+  struct ag_data_fingerprint data;
+
+  assert(ag_face_diag_fingerprint_tensor(i8, 4, 1, true, &data));
+  assert(data.type == AG_FINGERPRINT_I8);
+  assert(data.hash == UINT32_C(0x6fab6075));
+  assert(ag_face_diag_fingerprint_tensor(i16, 2, 2, true, &data));
+  assert(data.type == AG_FINGERPRINT_I16);
+  assert(data.hash == UINT32_C(0xdefc708b));
+
+  memset(&data, 0xa5, sizeof(data));
+  assert(!ag_face_diag_fingerprint_tensor(i8, 4, 4, true, &data));
+  assert(memcmp(&data, &(struct ag_data_fingerprint){0}, sizeof(data)) == 0);
+  memset(&data, 0xa5, sizeof(data));
+  assert(!ag_face_diag_fingerprint_tensor(i8, 4, 1, false, &data));
+  assert(memcmp(&data, &(struct ag_data_fingerprint){0}, sizeof(data)) == 0);
+  assert(!ag_face_diag_fingerprint_tensor(i8, 4, 1, true, NULL));
+}
+
 static void test_trace_records_only_first_four_mnp_attempts(void)
 {
   struct ag_face_detector_trace trace = {0};
@@ -134,6 +156,7 @@ static void test_format_reports_fixed_order_snapshot_without_overflow(void)
 
 int main(void)
 {
+  test_tensor_adapter_accepts_only_signed_i8_and_i16();
   test_trace_records_only_first_four_mnp_attempts();
   test_store_copies_complete_valid_snapshots();
   test_change_flags_require_comparable_generations();

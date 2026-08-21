@@ -90,6 +90,34 @@ bool ag_face_diag_record_mnp(struct ag_face_detector_trace *trace,
   return true;
 }
 
+bool ag_face_diag_fingerprint_tensor(
+  const void *data, uint32_t elements, uint8_t element_bytes,
+  bool element_signed, struct ag_data_fingerprint *output)
+{
+  if (output == NULL)
+    {
+      return false;
+    }
+
+  memset(output, 0, sizeof(*output));
+  if (!element_signed)
+    {
+      return false;
+    }
+
+  if (element_bytes == sizeof(int8_t))
+    {
+      return ag_fingerprint_i8((const int8_t *)data, elements, output);
+    }
+
+  if (element_bytes == sizeof(int16_t))
+    {
+      return ag_fingerprint_i16((const int16_t *)data, elements, output);
+    }
+
+  return false;
+}
+
 void ag_face_diag_mark_changes(const struct ag_face_diag_snapshot *previous,
                                struct ag_face_diag_snapshot *current)
 {

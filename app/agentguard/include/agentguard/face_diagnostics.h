@@ -69,6 +69,9 @@ struct ag_face_diag_store
 
 bool ag_face_diag_record_mnp(struct ag_face_detector_trace *trace,
                              const struct ag_mnp_diagnostic *diagnostic);
+bool ag_face_diag_fingerprint_tensor(
+  const void *data, uint32_t elements, uint8_t element_bytes,
+  bool element_signed, struct ag_data_fingerprint *output);
 void ag_face_diag_mark_changes(const struct ag_face_diag_snapshot *previous,
                                struct ag_face_diag_snapshot *current);
 void ag_face_diag_publish(struct ag_face_diag_store *store,
