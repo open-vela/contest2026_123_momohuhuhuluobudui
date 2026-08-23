@@ -1,4 +1,5 @@
 #include "human_face_detect.hpp"
+#include "human_face_detect_roi.hpp"
 #include "dl_math.hpp"
 #include <cstring>
 #if CONFIG_HUMAN_FACE_DETECT_MODEL_IN_SDCARD
@@ -236,14 +237,9 @@ std::list<dl::detect::result_t> &MNP::run(
     DL_LOG_INFER_LATENCY_ARRAY_INIT_WITH_SIZE(3, 10);
     m_postprocessor->clear_result();
     for (auto &candidate : candidates) {
-        int center_x = (candidate.box[0] + candidate.box[2]) >> 1;
-        int center_y = (candidate.box[1] + candidate.box[3]) >> 1;
-        int side = DL_MAX(candidate.box[2] - candidate.box[0], candidate.box[3] - candidate.box[1]);
-        candidate.box[0] = center_x - (side >> 1);
-        candidate.box[1] = center_y - (side >> 1);
-        candidate.box[2] = candidate.box[0] + side;
-        candidate.box[3] = candidate.box[1] + side;
-        candidate.limit_box(img.width, img.height);
+        if (!prepare_candidate_roi(candidate, img.width, img.height)) {
+            continue;
+        }
 
         ag_mnp_diagnostic diagnostic = {};
         bool crop_valid = copy_candidate_box(candidate, &diagnostic.crop);

@@ -10,7 +10,8 @@ TARGETS := test_core test_vision test_diagnostic_fingerprint \
 	test_frame_timing test_lcd_timing test_lcd_transfer test_lcd_bounce \
 	test_thread_priority test_display_preview test_rgb565_region \
 	test_display_regions \
-	test_espdl_backend_config test_espdl_pixel_mode test_espdl_alloc_policy \
+	test_espdl_backend_config test_espdl_pixel_mode test_espdl_roi_filter \
+	test_espdl_alloc_policy \
 	test_espdl_private_pool test_espdl_tie_selftest
 
 .PHONY: all test clean
@@ -120,6 +121,14 @@ test_espdl_pixel_mode: test_espdl_pixel_mode.c \
 	$(ROOT)/include/agentguard/espdl_pixel_mode.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include $< -o $@
 
+test_espdl_roi_filter: test_espdl_roi_filter.cpp \
+	$(ROOT)/third_party/human_face_detect/human_face_detect_roi.hpp
+	$(CXX) $(CXXFLAGS) -I$(ROOT)/compat/espdl \
+		-isystem $(ROOT)/third_party/esp-dl/dl \
+		-isystem $(ROOT)/third_party/esp-dl/dl/tool/include \
+		-isystem $(ROOT)/third_party/esp-dl/vision/detect \
+		-I$(ROOT)/third_party/human_face_detect $< -o $@
+
 test_espdl_alloc_policy: test_espdl_alloc_policy.c \
 	$(ROOT)/compat/espdl/esp_heap_caps.h
 	$(CC) $(CFLAGS) -I$(ROOT)/compat/espdl $< -o $@
@@ -158,6 +167,7 @@ test: $(TARGETS)
 	./test_display_regions
 	./test_espdl_backend_config
 	./test_espdl_pixel_mode
+	./test_espdl_roi_filter
 	./test_espdl_alloc_policy
 	./test_espdl_private_pool
 	./test_espdl_tie_selftest
