@@ -40,6 +40,11 @@ int main()
   assert(resize.inv_y_millionths == 0);
   assert(resize.valid);
 
+  auto full_frame = human_face_detect::full_frame_crop(320, 240);
+  assert((full_frame == std::vector<int>{0, 0, 320, 240}));
+  assert(human_face_detect::full_frame_crop(0, 240).empty());
+  assert(human_face_detect::full_frame_crop(320, 0).empty());
+
   auto centered = candidate(20, 10, 60, 50);
   centered.score = 0.625f;
   assert(human_face_detect::capture_candidate(centered, &captured));
