@@ -18,6 +18,17 @@ static const char *path = "human_face_det";
 #endif
 namespace human_face_detect {
 
+class MSRTracePostprocessor : public dl::detect::MSRPostprocessor
+{
+public:
+    using dl::detect::MSRPostprocessor::MSRPostprocessor;
+
+    const std::list<dl::detect::result_t> &peek_result() const
+    {
+        return m_box_list;
+    }
+};
+
 static bool fingerprint_tensor(dl::TensorBase *tensor,
                                ag_data_fingerprint *output)
 {
@@ -125,12 +136,12 @@ MSR::MSR(const char *model_name, float score_thr, float nms_thr)
         m_model, {0, 0, 0}, {1, 1, 1}, dl::image::DL_IMAGE_CAP_RGB_SWAP | dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN);
 #endif
     m_postprocessor =
-        new dl::detect::MSRPostprocessor(m_model,
-                                         m_image_preprocessor,
-                                         score_thr,
-                                         nms_thr,
-                                         10,
-                                         {{8, 8, 9, 9, {{16, 16}, {32, 32}}}, {16, 16, 9, 9, {{64, 64}, {128, 128}}}});
+        new MSRTracePostprocessor(m_model,
+                                  m_image_preprocessor,
+                                  score_thr,
+                                  nms_thr,
+                                  10,
+                                  {{8, 8, 9, 9, {{16, 16}, {32, 32}}}, {16, 16, 9, 9, {{64, 64}, {128, 128}}}});
 }
 
 std::list<dl::detect::result_t> &MSR::run(const dl::image::img_t &img)
@@ -151,7 +162,14 @@ std::list<dl::detect::result_t> &MSR::run(const dl::image::img_t &img)
     fingerprint_tensor(m_model->get_output("box1"), &m_last_box1);
     m_postprocessor->clear_result();
     m_postprocessor->postprocess();
-    return m_postprocessor->get_result(img.width, img.height);
+    MSRTracePostprocessor *trace_postprocessor =
+        static_cast<MSRTracePostprocessor *>(m_postprocessor);
+    capture_top_candidate(trace_postprocessor->peek_result(),
+                          &m_last_candidate_before_clip);
+    std::list<dl::detect::result_t> &result =
+        m_postprocessor->get_result(img.width, img.height);
+    capture_top_candidate(result, &m_last_candidate_after_clip);
+    return result;
 }
 
 void MSR::get_last_trace(ag_face_detector_trace *trace) const
@@ -165,6 +183,8 @@ void MSR::get_last_trace(ag_face_detector_trace *trace) const
     trace->msr_box0 = m_last_box0;
     trace->msr_score1 = m_last_score1;
     trace->msr_box1 = m_last_box1;
+    trace->msr_candidate_before_clip = m_last_candidate_before_clip;
+    trace->msr_candidate_after_clip = m_last_candidate_after_clip;
 }
 
 void MSR::get_last_input_range(int16_t *input_min, int16_t *input_max) const

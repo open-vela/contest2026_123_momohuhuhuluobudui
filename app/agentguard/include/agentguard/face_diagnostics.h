@@ -16,6 +16,16 @@ extern "C"
 
 #define AG_FACE_DIAG_MAX_MNP 4
 
+struct ag_face_candidate_diagnostic
+{
+  int32_t left;
+  int32_t top;
+  int32_t right;
+  int32_t bottom;
+  uint16_t score_permille;
+  bool valid;
+};
+
 struct ag_mnp_diagnostic
 {
   struct ag_face_box crop;
@@ -35,6 +45,8 @@ struct ag_face_detector_trace
   struct ag_data_fingerprint msr_score1;
   struct ag_data_fingerprint msr_box1;
   struct ag_face_box largest_msr;
+  struct ag_face_candidate_diagnostic msr_candidate_before_clip;
+  struct ag_face_candidate_diagnostic msr_candidate_after_clip;
   struct ag_mnp_diagnostic mnp[AG_FACE_DIAG_MAX_MNP];
   uint8_t msr_candidates;
   uint8_t mnp_attempts;

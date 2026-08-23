@@ -127,7 +127,8 @@ test_espdl_roi_filter: test_espdl_roi_filter.cpp \
 		-isystem $(ROOT)/third_party/esp-dl/dl \
 		-isystem $(ROOT)/third_party/esp-dl/dl/tool/include \
 		-isystem $(ROOT)/third_party/esp-dl/vision/detect \
-		-I$(ROOT)/third_party/human_face_detect $< -o $@
+		-I$(ROOT)/third_party/human_face_detect \
+		-I$(ROOT)/include $< -o $@
 
 test_espdl_alloc_policy: test_espdl_alloc_policy.c \
 	$(ROOT)/compat/espdl/esp_heap_caps.h

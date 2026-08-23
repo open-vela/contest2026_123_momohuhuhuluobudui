@@ -14,6 +14,8 @@ private:
     ag_data_fingerprint m_last_box0 = {};
     ag_data_fingerprint m_last_score1 = {};
     ag_data_fingerprint m_last_box1 = {};
+    ag_face_candidate_diagnostic m_last_candidate_before_clip = {};
+    ag_face_candidate_diagnostic m_last_candidate_after_clip = {};
 
 public:
     static inline constexpr float default_score_thr = 0.5;
