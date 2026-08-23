@@ -149,10 +149,7 @@ std::list<dl::detect::result_t> &MSR::run(const dl::image::img_t &img)
     /* Model::minimize() allows ESP-DL to reuse tensor storage while running.
      * Capture the preprocessed input before Model::run(), otherwise this
      * diagnostic reads a later intermediate tensor rather than the image. */
-    /* An explicit full-frame crop forces ESP-DL to initialize its resize map
-     * on targets where the equivalent empty crop leaves scale at zero. */
-    m_image_preprocessor->preprocess(
-        img, full_frame_crop(img.width, img.height));
+    m_image_preprocessor->preprocess(img);
     capture_resize_scale(
         m_image_preprocessor->get_resize_scale_x(),
         m_image_preprocessor->get_resize_scale_y(),

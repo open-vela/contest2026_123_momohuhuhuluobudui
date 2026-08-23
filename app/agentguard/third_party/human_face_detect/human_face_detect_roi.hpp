@@ -10,18 +10,8 @@
 #include <cstring>
 #include <limits>
 #include <list>
-#include <vector>
 
 namespace human_face_detect {
-
-inline std::vector<int> full_frame_crop(int width, int height)
-{
-    if (width <= 0 || height <= 0) {
-        return {};
-    }
-
-    return {0, 0, width, height};
-}
 
 inline int32_t scale_to_millionths(float scale)
 {
