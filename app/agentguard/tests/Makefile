@@ -10,7 +10,8 @@ TARGETS := test_core test_vision test_diagnostic_fingerprint \
 	test_frame_timing test_lcd_timing test_lcd_transfer test_lcd_bounce \
 	test_thread_priority test_display_preview test_rgb565_region \
 	test_display_regions \
-	test_espdl_backend_config test_espdl_pixel_mode test_espdl_roi_filter \
+	test_espdl_backend_config test_espdl_error_check \
+	test_espdl_pixel_mode test_espdl_roi_filter \
 	test_espdl_alloc_policy \
 	test_espdl_private_pool test_espdl_tie_selftest
 
@@ -117,6 +118,10 @@ test_espdl_backend_config: test_espdl_backend_config.cpp \
 		-I$(ROOT)/third_party/esp-dl/dl \
 		$< -o $@
 
+test_espdl_error_check: test_espdl_error_check.c \
+	$(ROOT)/compat/espdl/esp_log.h
+	$(CC) $(CFLAGS) -DNDEBUG -I$(ROOT)/compat/espdl $< -o $@
+
 test_espdl_pixel_mode: test_espdl_pixel_mode.c \
 	$(ROOT)/include/agentguard/espdl_pixel_mode.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include $< -o $@
@@ -167,6 +172,7 @@ test: $(TARGETS)
 	./test_rgb565_region
 	./test_display_regions
 	./test_espdl_backend_config
+	./test_espdl_error_check
 	./test_espdl_pixel_mode
 	./test_espdl_roi_filter
 	./test_espdl_alloc_policy
