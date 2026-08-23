@@ -18,7 +18,27 @@ static dl::detect::result_t candidate(int left, int top, int right,
 int main()
 {
   ag_face_candidate_diagnostic captured = {};
+  ag_resize_scale_diagnostic resize = {};
   ag_face_detector_trace trace = {};
+
+  assert(human_face_detect::capture_resize_scale(0.5f, 0.25f,
+                                                  2.0f, 4.0f,
+                                                  &resize));
+  assert(resize.x_millionths == 500000);
+  assert(resize.y_millionths == 250000);
+  assert(resize.inv_x_millionths == 2000000);
+  assert(resize.inv_y_millionths == 4000000);
+  assert(resize.valid);
+
+  std::memset(&resize, 0x55, sizeof(resize));
+  assert(human_face_detect::capture_resize_scale(0.0f, 0.0f,
+                                                  0.0f, 0.0f,
+                                                  &resize));
+  assert(resize.x_millionths == 0);
+  assert(resize.y_millionths == 0);
+  assert(resize.inv_x_millionths == 0);
+  assert(resize.inv_y_millionths == 0);
+  assert(resize.valid);
 
   auto centered = candidate(20, 10, 60, 50);
   centered.score = 0.625f;

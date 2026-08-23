@@ -6,10 +6,43 @@
 #include "dl_detect_define.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <limits>
 #include <list>
 
 namespace human_face_detect {
+
+inline int32_t scale_to_millionths(float scale)
+{
+    double scaled = static_cast<double>(scale) * 1000000.0;
+    scaled = std::max(static_cast<double>(std::numeric_limits<int32_t>::min()),
+                      std::min(static_cast<double>(std::numeric_limits<int32_t>::max()),
+                               scaled));
+    return static_cast<int32_t>(scaled);
+}
+
+inline bool capture_resize_scale(float scale_x, float scale_y,
+                                 float inv_scale_x, float inv_scale_y,
+                                 ag_resize_scale_diagnostic *diagnostic)
+{
+    if (diagnostic == nullptr) {
+        return false;
+    }
+
+    std::memset(diagnostic, 0, sizeof(*diagnostic));
+    if (!std::isfinite(scale_x) || !std::isfinite(scale_y) ||
+        !std::isfinite(inv_scale_x) || !std::isfinite(inv_scale_y)) {
+        return false;
+    }
+
+    diagnostic->x_millionths = scale_to_millionths(scale_x);
+    diagnostic->y_millionths = scale_to_millionths(scale_y);
+    diagnostic->inv_x_millionths = scale_to_millionths(inv_scale_x);
+    diagnostic->inv_y_millionths = scale_to_millionths(inv_scale_y);
+    diagnostic->valid = true;
+    return true;
+}
 
 inline bool capture_candidate(
     const dl::detect::result_t &candidate,

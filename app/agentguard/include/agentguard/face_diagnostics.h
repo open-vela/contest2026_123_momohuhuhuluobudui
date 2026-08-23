@@ -26,6 +26,15 @@ struct ag_face_candidate_diagnostic
   bool valid;
 };
 
+struct ag_resize_scale_diagnostic
+{
+  int32_t x_millionths;
+  int32_t y_millionths;
+  int32_t inv_x_millionths;
+  int32_t inv_y_millionths;
+  bool valid;
+};
+
 struct ag_mnp_diagnostic
 {
   struct ag_face_box crop;
@@ -44,6 +53,7 @@ struct ag_face_detector_trace
   struct ag_data_fingerprint msr_box0;
   struct ag_data_fingerprint msr_score1;
   struct ag_data_fingerprint msr_box1;
+  struct ag_resize_scale_diagnostic msr_resize;
   struct ag_face_box largest_msr;
   struct ag_face_candidate_diagnostic msr_candidate_before_clip;
   struct ag_face_candidate_diagnostic msr_candidate_after_clip;

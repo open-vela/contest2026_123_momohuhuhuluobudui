@@ -14,6 +14,7 @@ private:
     ag_data_fingerprint m_last_box0 = {};
     ag_data_fingerprint m_last_score1 = {};
     ag_data_fingerprint m_last_box1 = {};
+    ag_resize_scale_diagnostic m_last_resize = {};
     ag_face_candidate_diagnostic m_last_candidate_before_clip = {};
     ag_face_candidate_diagnostic m_last_candidate_after_clip = {};
 

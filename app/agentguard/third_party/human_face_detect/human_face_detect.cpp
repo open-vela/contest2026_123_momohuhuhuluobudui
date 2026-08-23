@@ -150,6 +150,12 @@ std::list<dl::detect::result_t> &MSR::run(const dl::image::img_t &img)
      * Capture the preprocessed input before Model::run(), otherwise this
      * diagnostic reads a later intermediate tensor rather than the image. */
     m_image_preprocessor->preprocess(img);
+    capture_resize_scale(
+        m_image_preprocessor->get_resize_scale_x(),
+        m_image_preprocessor->get_resize_scale_y(),
+        m_image_preprocessor->get_resize_scale_x(true),
+        m_image_preprocessor->get_resize_scale_y(true),
+        &m_last_resize);
     tensor_range(m_image_preprocessor->get_model_input(),
                  &m_last_input_min, &m_last_input_max);
     fingerprint_tensor(m_image_preprocessor->get_model_input(),
@@ -183,6 +189,7 @@ void MSR::get_last_trace(ag_face_detector_trace *trace) const
     trace->msr_box0 = m_last_box0;
     trace->msr_score1 = m_last_score1;
     trace->msr_box1 = m_last_box1;
+    trace->msr_resize = m_last_resize;
     trace->msr_candidate_before_clip = m_last_candidate_before_clip;
     trace->msr_candidate_after_clip = m_last_candidate_after_clip;
 }
