@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgentGuard openvela 开发"
+  short_description: "构建并验证 ESP32-S3-EYE 端侧健康守护应用"
+  default_prompt: "Use $develop-agentguard-openvela to implement and validate the next AgentGuard feature on ESP32-S3-EYE."
