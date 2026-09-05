@@ -2618,3 +2618,21 @@ LittleFS 数据区。随后标准 NuttX 构建与烧录成功，esptool 报告
 `REPLACE_MODEL` 优先级判断。截止期内的最小可行路线是：保留官方 v3.2.0 人脸模型，
 以官方示例的单脸结果为 golden reference，逐层对照 NuttX 模型加载、量化张量布局及
 portable C 算子；先保证 0/1/2+ 人数档位和单脸框，不在该门禁通过前做主人身份识别。
+
+### 同一 RGB565 输入与第一轮兼容层收敛
+
+官方探针进一步直接内嵌并运行 AgentGuard 使用的同一份 320x240
+`human_face_rgb565be.bin`。官方 ESP-DL v3.2.0 在同一开发板上输出恰好一张人脸，score
+`0.904651`、框 `(96,64)-(194,191)`；原 JPEG/RGB888 路径仍为 score `0.899121`、
+框 `(100,65)-(194,189)`。因此可同时排除测试图转换、RGB565-BE caps、模型文件和硬件，
+后续只修 NuttX/openvela 兼容边界。
+
+按“尽可能保持 ESP-DL 算法层原样”的要求，第一轮单变量恢复了官方
+`human_face_detect.cpp/.hpp`，移除其中 AgentGuard 私有 trace、ROI 和运行模式改写；
+`vision_espdl.cpp` 改为只调用官方 `run()`/threshold API，并在 adapter 外侧汇总最终
+人数和最高分。新增上游 wrapper SHA-256 完整性门禁，已完成预期 RED（两个文件均不匹配）
+和 GREEN（匹配 v3.2.0），全部 AgentGuard 主机测试通过，目标交叉构建成功。固件
+2,218,068 bytes，SHA-256
+`2ec0277ef7b5953b3cc0a2f878af98d4bbdab7f229a3535609eca999592cfee6`，烧录校验通过。
+本轮实机 `face-diag` 只读查询在用户明确批准后仍因平台审批服务网络解码中断而未执行，
+所以“参考图已由 5 变为 1”仍是待验证项，不能提前宣称修复完成。

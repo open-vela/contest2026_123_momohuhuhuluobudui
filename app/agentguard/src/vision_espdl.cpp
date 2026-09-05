@@ -19,9 +19,6 @@ constexpr unsigned int kInferenceInterval = 3;
 constexpr unsigned int kMaximumFaces = 8;
 constexpr float kFaceScoreThreshold =
   CONFIG_AGENTGUARD_FACE_SCORE_THRESHOLD_PERCENT / 100.0f;
-constexpr uint32_t kCameraImageCaps =
-  dl::image::DL_IMAGE_CAP_RGB_SWAP |
-  dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN;
 
 extern "C" const uint8_t _binary_human_face_rgb565be_start[];
 
@@ -61,6 +58,35 @@ uint16_t clip_coordinate(int value, uint16_t limit)
     }
 
   return static_cast<uint16_t>(value);
+}
+
+uint8_t detection_count(const std::list<dl::detect::result_t> &detections)
+{
+  return static_cast<uint8_t>(
+    std::min(detections.size(), static_cast<size_t>(UINT8_MAX)));
+}
+
+uint8_t maximum_score_percent(
+  const std::list<dl::detect::result_t> &detections)
+{
+  float maximum = 0.0f;
+
+  for (const auto &detection : detections)
+    {
+      maximum = std::max(maximum, detection.score);
+    }
+
+  return static_cast<uint8_t>(std::min(maximum * 100.0f, 99.0f));
+}
+
+void summarize_detections(
+  const std::list<dl::detect::result_t> &detections,
+  struct ag_face_detector_trace *trace)
+{
+  std::memset(trace, 0, sizeof(*trace));
+  trace->mnp_accepted = detection_count(detections);
+  trace->final_faces = trace->mnp_accepted;
+  trace->valid = true;
 }
 
 } // namespace
@@ -118,7 +144,6 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
 
       g_detector->set_score_thr(kFaceScoreThreshold, 0);
       g_detector->set_score_thr(kFaceScoreThreshold, 1);
-      g_detector->set_image_caps(kCameraImageCaps);
       g_diagnostics.pixel_mode_scores[0] = 3;
 
       dl::image::img_t reference_image = {
@@ -133,14 +158,10 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
         320, 240, &g_reference_raw);
       std::list<dl::detect::result_t> &reference_detections =
         g_detector->run(reference_image);
-      g_detector->get_last_trace(&g_reference_trace);
-      int16_t reference_input_min;
-      int16_t reference_input_max;
-      g_detector->get_last_msr_signal(&reference_input_min,
-                                      &reference_input_max,
-                                      &g_diagnostics.reference_score_percent);
-      g_diagnostics.reference_face_count = static_cast<uint8_t>(
-        std::min(reference_detections.size(), static_cast<size_t>(UINT8_MAX)));
+      summarize_detections(reference_detections, &g_reference_trace);
+      g_diagnostics.reference_score_percent =
+        maximum_score_percent(reference_detections);
+      g_diagnostics.reference_face_count = detection_count(reference_detections);
     }
 
   if (g_frame_counter++ % kInferenceInterval != 0)
@@ -160,11 +181,10 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
   ag_face_diag_snapshot snapshot = {};
 
   ag_fingerprint_rgb565(pixels, width, height, &raw_fingerprint);
-  g_detector->set_image_caps(kCameraImageCaps);
   uint64_t inference_started_ms = monotonic_ms();
   std::list<dl::detect::result_t> &detections = g_detector->run(image);
   uint64_t inference_finished_ms = monotonic_ms();
-  g_detector->get_last_trace(&live_trace);
+  summarize_detections(detections, &live_trace);
   g_face_diag_sequence++;
   ag_face_diag_prepare_snapshot(
     g_previous_snapshot.valid ? &g_previous_snapshot : nullptr,
@@ -205,12 +225,10 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
         }
     }
 
-  size_t msr_candidates = g_detector->get_last_msr_candidate_count();
-  g_detector->get_last_msr_signal(&g_diagnostics.input_min,
-                                  &g_diagnostics.input_max,
-                                  &g_diagnostics.score_percent);
-  g_diagnostics.msr_candidates = static_cast<uint8_t>(
-    std::min(msr_candidates, static_cast<size_t>(UINT8_MAX)));
+  g_diagnostics.input_min = 0;
+  g_diagnostics.input_max = 0;
+  g_diagnostics.score_percent = maximum_score_percent(detections);
+  g_diagnostics.msr_candidates = 0;
   g_diagnostics.inference_ms = inference_finished_ms >= inference_started_ms ?
     static_cast<uint32_t>(std::min(
       inference_finished_ms - inference_started_ms,
