@@ -227,10 +227,10 @@ make -C app/agentguard/tests clean test
 
 Expected: all C/C++ executables, the TIE no-stdio contract, and the LCD DMA configuration test pass.
 
-Run:
+Run with `monitor/` as the working directory:
 
 ```bash
-python3 -m unittest -v monitor/test_agentguard_pc.py
+python3 -m unittest -v test_agentguard_pc.py
 ```
 
 Expected: all PC-agent authorization and dispatch tests pass.
@@ -341,8 +341,11 @@ Run tests from the extracted archive:
 make -C "$AG_SUBMISSION_TMP/app/agentguard/tests" clean test
 ```
 
+Run the following two lines in one shell so the test's sibling-module import resolves from the archived `monitor/` directory:
+
 ```bash
-python3 "$AG_SUBMISSION_TMP/monitor/test_agentguard_pc.py" -v
+cd "$AG_SUBMISSION_TMP/monitor"
+python3 -m unittest -v test_agentguard_pc.py
 ```
 
 Expected: both suites pass without reading source files from the original worktree.
