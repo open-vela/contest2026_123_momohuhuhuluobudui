@@ -2581,3 +2581,40 @@ false-positive pattern；only raw-frame hashes differ while neural decision fiel
 构造不依赖场景坐标或肤色的确定性后处理规则。此次证据门禁没有修改阈值、模型、
 ESP-DL 代码或产品行为。下一步应制定有明确官方版本、来源、许可证、内存预算和回滚点
 的模型替换方案，而不是继续调阈值。
+
+## 2026-09-05 官方 ESP-DL A/B 最小验证
+
+为区分“模型本身错误”和“openvela/NuttX 适配路径错误”，在 `/tmp` 中从未修改的
+ESP-DL `v3.2.0`（commit `dc380d450835d42f92777121a0cd4fc67d7c3a8c`）构建官方
+`examples/human_face_detect`，没有把 probe 或官方工程改动写入仓库。最初使用本机
+ESP-IDF 6.0.2 时，官方 `esp-dsp` 依赖与 C++26 不兼容；改用 Espressif 官方维护的
+ESP-IDF `release/v5.4`（commit
+`62c1a66ebaff1b12db25eb0a56ceba297e11f1df`，识别为 5.4.4）及官方
+GCC `esp-14.2.0_20260121` 后构建成功。经用户批准安装的 Python 构建依赖包括
+`tree-sitter 0.26.0` 与 `tree-sitter-c 0.24.2`，安装在 ESP-IDF 5.4 独立环境
+`idf5.4_py3.10_env`，不影响项目源码。
+
+官方示例镜像为 1,562,528 bytes，SHA-256
+`eb604eeffff892c68d6a043e18256ffde60a291bbeefed6ca0edbc40419ae1a5`。在同一块
+ESP32-S3-EYE 上运行官方内嵌人脸测试图，串口明确输出一张人脸：score
+`0.899121`，框 `(100,65)-(194,189)`，并给出双眼、鼻和双嘴角五个关键点。这是
+官方模型、官方 ESP-DL 运行时和同一硬件组合的正对照；它证明模型文件并非天然只能
+输出当前 NuttX 路径中的固定五框。该示例使用内嵌测试图，不等价于实时摄像头验收，
+但已经把故障边界收敛到当前 NuttX ESP-DL 兼容/算子/模型装载路径，而不是继续盲目
+更换阈值或模型。
+
+官方示例写入范围低于约 `0x190000`，未触及 AgentGuard 从 `0x300000` 开始的
+LittleFS 数据区。随后标准 NuttX 构建与烧录成功，esptool 报告
+`Hash of data verified`。恢复前备份镜像 SHA-256 为
+`88a581efc5cb75e23261226cb5e14ad89e344183c97f1611a8fd6913ff86cf5e`；重新链接并烧录的
+镜像 SHA-256 为
+`e7b195d768ca4452631740e6792817015f32862b4306f2532f25f15dc5d25472`。两者均为
+2,218,068 bytes，逐字节比较只有偏移 2,073,431、2,073,433、2,073,434、
+2,073,436 四个字节不同，对应内嵌构建时间从 `20:43:44` 变为 `22:27:04`；其余字节
+一致。因此恢复镜像与备份的程序内容等价。恢复后的串口 `pidof/stats` 只读确认因平台
+外部执行审批链路连续中断尚未补做，不能把该项记为已通过。
+
+**Decision: `FIX_NUTTX_ADAPTER`。** 官方 A/B 已推翻上一节基于 NuttX 异常输出作出的
+`REPLACE_MODEL` 优先级判断。截止期内的最小可行路线是：保留官方 v3.2.0 人脸模型，
+以官方示例的单脸结果为 golden reference，逐层对照 NuttX 模型加载、量化张量布局及
+portable C 算子；先保证 0/1/2+ 人数档位和单脸框，不在该门禁通过前做主人身份识别。
