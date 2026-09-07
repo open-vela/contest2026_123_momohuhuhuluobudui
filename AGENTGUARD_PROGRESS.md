@@ -2636,3 +2636,104 @@ portable C 算子；先保证 0/1/2+ 人数档位和单脸框，不在该门禁�
 `2ec0277ef7b5953b3cc0a2f878af98d4bbdab7f229a3535609eca999592cfee6`，烧录校验通过。
 本轮实机 `face-diag` 只读查询在用户明确批准后仍因平台审批服务网络解码中断而未执行，
 所以“参考图已由 5 变为 1”仍是待验证项，不能提前宣称修复完成。
+
+## 2026-09-06 ESP-DL TIE728 兼容层修复与实机闭环
+
+在官方 ESP-IDF 5.4.4 + ESP-DL v3.2.0 和 NuttX 两侧加入仅用于定位的模块输出指纹，
+不改算子数学实现。官方优化版 MSR 首层输出哈希为 `86dd504c`、范围 `0..54`；强制
+官方工程 Conv 走 portable C 后变为 `7be4d4bb`、范围 `0..127`，并与当时 NuttX
+首层逐字节一致。由此确认模型、权重、预处理输入和 ABI 没有分叉，根因是该模型在
+ESP32-S3 上不能用 portable C Conv 替代官方 TIE728 量化内核。
+
+先恢复全局 TIE728、同时用独立诊断开关令 Depthwise Conv 继续走 C 后，NuttX 前 5 个
+模块与官方一致，参考图误检从 5 张降为 0 张；首次分叉位于第 5 项，即首个融合激活的
+Depthwise Conv。这个阶段会启用所有由 `CONFIG_TIE728_BOOST` 控制的 ESP32-S3 算子，
+不能表述为只启用了普通 Conv。随后恢复 Depthwise Conv 的官方 TIE728 路径，其余上游
+detector wrapper 和模型保持 v3.2.0 原样。配置测试按 TDD 先命中旧值失败，再通过；
+全部 AgentGuard 主机测试通过，`diff --check` 无输出。目标 ELF 同时包含
+`dl_tie728_s8_conv2d_*` 和 `dl_tie728_s8_depthwise_conv2d_*` 符号。干净构建镜像为
+2,349,148 bytes，SHA-256
+`4895cdcd1f946cddc99287da00a9fd6e9ce31e8bdc0c270826b8c54e5d9af53d`，esptool
+报告 `Hash of data verified`。
+
+同一块 ESP32-S3-EYE 的 JTAG 只读快照确认模块跟踪 `count=41`、`complete=1`。参考图
+最终 MSR 四张量哈希依次为 `07ded1d9`、`dee4d25f`、`12e92d73`、`8f265d9f`，与
+官方 ESP-IDF 基准完全一致；参考图 `final_faces=1`、`valid=1`。诊断快照文件
+`/tmp/nuttx-tie-conv-depthwise-face-diag.bin` 的 SHA-256 为
+`fb7bedc6b5f5e535aa561bcf4f4ef3c2e1c69d572d3446d5fa59c718e4381228`。读取事务在成功
+和异常路径均执行 `resume`。定位结束后已删除临时逐层 hook、测试及约 1.1KB DRAM
+缓冲区，只保留最小后端选择兼容层、编译期配置门禁和最终张量诊断。
+
+删除逐层探针后的中间兼容配置再次执行完整 `make clean` 与交叉构建，镜像仍为
+2,349,148 bytes，SHA-256
+`1deb8432e9bdda8fdcaa776585a93a76b956658a847cfbb15c2012a85db98f28`；ELF 中已无
+`g_agentguard_espdl_module_trace` 符号，烧录再次报告 `Hash of data verified`。最终
+只读快照 `/tmp/agentguard-production-tie-face-diag.bin` 的 SHA-256 为
+`0b3d1425e696e7c7f4825ce8c609773e472eff098813a5cde42eda3658131cc8`；四张量哈希仍为
+`07ded1d9/dee4d25f/12e92d73/8f265d9f`，`final_faces=1`、`valid=1`，证明移除探针
+未造成回归。JTAG 描述符两次超时后仅执行 `usbreset 303a:1001` 恢复连接，读取事务
+完成后已恢复 CPU 运行。
+
+提交前代码审查指出 `CONFIG_TIE728_BOOST` 是全局后端能力开关，而非 Conv 专用开关。
+为准确遵循“保留官方 ESP-DL 算法层”的要求，最终生产配置将全局
+`CONFIG_AGENTGUARD_ESP_DL_FORCE_C` 设为 0，直接采用 ESP32-S3 官方 Xtensa/TIE 调度，
+并撤回对 `dl_define_private.hpp` 的本轮修改，因此 ESP-DL 私有算法头相对基线无 diff。
+配置测试再次完成 RED→GREEN，全部主机测试通过。干净构建镜像为 2,414,676 bytes，
+SHA-256 `1d2665b6cedcddc5a79a0d0aa24910a45e28197de5f0a3b38e4a8a94cb59f36a`，
+仍低于 `0x300000` 数据分区边界，烧录校验通过。最终 JTAG 快照
+`/tmp/agentguard-production-official-dispatch-face-diag.bin` 的 SHA-256 为
+`0cef6b9cb2a7f24e132b94bfe31c93a9903b2c9949dfe5d4cdb711734bcf853d`：参考图四张量
+哈希仍与官方一致且 `final_faces=1`；实时空场景为 `final_faces=0`，两者均有效，快照
+序号为 101。读取后 CPU 已恢复运行。
+
+**Decision: `KEEP_OFFICIAL_MODEL_AND_TIE_KERNELS`。** 固定 5 框不是模型问题，而是
+portable C 卷积族与 ESP32-S3 官方量化内核的数值差异。当前最小可行产品范围继续是
+框出人脸并统计 0/1/2+ 人数；主人身份识别不进入本阶段。
+
+## 2026-09-07 实时 RGB565 字节序修复与 0/1 人脸验收
+
+恢复官方 TIE 内核后，内置 RGB565-BE 参考图已稳定为 1，但实时真人仍为 0。一次
+只读 JTAG 帧探针将模型来源的 320x240 RGB565 缓冲转储到 `/tmp`：相同字节按小端
+RGB565 解码时颜色正常且真人正面清晰，按 ESP-DL 官方 ESP32-S3 人脸预处理器默认的
+大端 RGB565 解码时呈严重伪彩。由此把实时漏检定位到 NuttX OV2640 用户缓冲的实际
+小端字节布局与官方 detector 大端输入契约不一致，而不是继续调整阈值、模型或算子。
+诊断帧只用于本机临时检查，没有写入仓库；最终源码和 ELF 均已删除帧地址探针。
+
+新增 `espdl_camera_adapter` 在 AgentGuard 适配层把每个小端 RGB565 word 字节交换到
+一个模型专用缓冲，再调用未修改的官方 `HumanFaceDetect::run()`。相机/V4L2 原缓冲和
+LCD 显示缓冲不变，官方 `human_face_detect.cpp/.hpp` 的完整性测试继续通过。适配器
+测试使用手工给定红、绿、蓝和普通像素，先因生产模块缺失 RED，再验证
+`f800/07e0/001f/1234 -> 00f8/e007/1f00/3412` 后 GREEN。
+
+同时修正产品权威链：ESP-DL 构建不再调用肤色连通块 fallback，避免肤色候选把神经
+网络原始 0 伪装成 `FACE:1`；非 ESP-DL 构建仍保留原启发式路径。实机确认字节序修复
+前屏幕的 1 确由 fallback 生成，禁用后原始 ESP-DL 如实显示 0。权威链行为测试分别
+构建 heuristic 与 `CONFIG_AGENTGUARD_ESP_DL=1` 两种版本，证明肤色块不能在 ESP-DL
+版本生成脸。真人检测恢复后用户观察到原始结果偶发 0/1；在三份真正空场景均确认
+原始 0 后，恢复 1.5 秒 presence hold，但它只能由 ESP-DL 真阳性写入和续期，肤色
+算法仍无产品权限。
+
+字节序验证固件的单真人 JTAG 快照
+`/tmp/agentguard-byte-swap-face-diag.bin` SHA-256 为
+`3f9a14daf67645cc8217e5a8d68a542b8033147193afde4cd05ce4cabe062b06`，序号 556；
+原始 ESP-DL `face_count=1`，框为 `(107,71,110,149)`，live
+`accepted/final/valid=1/1/1`。参考图仍为 1，最终 MSR 四张量哈希继续是
+`07ded1d9/dee4d25f/12e92d73/8f265d9f`。用户首次所谓空场景仍有头部留在左下角，
+模型正确返回 1；明确完全移出后，三份快照序号 1134、1310、1410 均为
+`face_count=0` 且 live `accepted/final/valid=0/0/1`，对应 SHA-256 为
+`6a4857f3b8389ee549838204192b3faa3c127d4b12b6c246738c597c6d339ad0`、
+`fadd40dd093198aad86edb547921b2bc6de5762b7f80b733a91303ea8c011cd2`、
+`8429f988b6d9dd3ffe8c2199da670172009bb52bdcafd41bbc325c43d7d6882c`。
+
+最终固件已移除临时帧探针，并在模型副本分配前拒绝 32 位 `size_t` 字节数回绕；大小
+2,414,612 bytes，SHA-256
+`f7fad1839642b5231f2a2c97d82f97b9359eeb7e551ad269f85a6eecfe2daa33`，低于
+`0x300000` LittleFS 边界；esptool 识别 ESP32-S3 rev 0.2、8 MB PSRAM/flash，
+报告 `Hash of data verified`。最终用户真机验收：空场景稳定 `FACE:0`；放入单张
+正面人脸并保持约 15 秒，`FACE` 稳定为 1，不再在 0/1 间闪烁。
+
+**Decision: `SHIP_ESP_DL_DETECTION_ONLY`。** 当前交付范围为官方 ESP-DL 模型和
+Xtensa/TIE 算法层、NuttX RGB565 字节序/方向兼容层、人脸框及人数统计。主人身份
+识别继续延期，不以肤色、坐标或其他启发式替代。本轮真机门禁只覆盖 0/1 与单脸框；
+代码会统计官方 detector 返回的最多 8 张人脸，但 2+ 场景仍需后续真机验收，不能标记
+为已验证。

@@ -6,7 +6,7 @@
 #include "agentguard/display_preview.h"
 #include "agentguard/display_regions.h"
 #include "agentguard/display_ui.h"
-#include "agentguard/face_fallback.h"
+#include "agentguard/face_authority.h"
 #include "agentguard/face_presence.h"
 #include "agentguard/frame_timing.h"
 #include "agentguard/lcd_bounce.h"
@@ -1245,17 +1245,22 @@ static int ag_run(void)
                              frame.timestamp.tv_sec,
                              frame.timestamp.tv_usec);
 
+      /* The board camera is mounted upside down.  Orient the frame before
+       * inference so ESP-DL and the display use the same upright image and
+       * coordinate system. */
+
+      ag_ui_rotate_180_rgb565((uint16_t *)frame.m.userptr,
+                              AG_WIDTH, AG_HEIGHT);
+
       if (ag_vision_process_rgb565(&vision,
                                    (uint16_t *)frame.m.userptr,
                                    AG_WIDTH, AG_HEIGHT,
                                    &vision_result) == 0)
         {
-          ag_face_fallback_apply_rgb565((uint16_t *)frame.m.userptr,
-                                        AG_WIDTH, AG_HEIGHT,
-                                        &vision_result);
-          ag_face_presence_filter(&face_presence, ag_now_ms(),
-                                  AG_FACE_PRESENCE_HOLD_MS,
-                                  &vision_result);
+          ag_face_authority_apply_rgb565(
+            (uint16_t *)frame.m.userptr, AG_WIDTH, AG_HEIGHT,
+            ag_now_ms(), AG_FACE_PRESENCE_HOLD_MS,
+            &face_presence, &vision_result);
           struct ag_face_box display_face = vision_result.primary_face;
 
           observation.monotonic_ms = ag_now_ms();
@@ -1324,17 +1329,6 @@ static int ag_run(void)
             {
               ui_status.seated_ms =
                 observation.monotonic_ms - state.presence_since_ms;
-            }
-
-          ag_ui_rotate_180_rgb565((uint16_t *)frame.m.userptr,
-                                  AG_WIDTH, AG_HEIGHT);
-          if (display_face.x + display_face.width <= AG_WIDTH &&
-              display_face.y + display_face.height <= AG_HEIGHT)
-            {
-              display_face.x = AG_WIDTH - display_face.x -
-                               display_face.width;
-              display_face.y = AG_HEIGHT - display_face.y -
-                               display_face.height;
             }
 
           ag_display_publish(&display_worker,

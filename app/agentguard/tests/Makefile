@@ -6,11 +6,13 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 ROOT := ..
 TARGETS := test_core test_vision test_diagnostic_fingerprint \
 	test_face_diagnostics test_face_fallback test_face_presence \
+	test_face_authority_heuristic test_face_authority_espdl \
 	test_storage test_display_ui \
 	test_frame_timing test_lcd_timing test_lcd_transfer test_lcd_bounce \
 	test_thread_priority test_display_preview test_rgb565_region \
 	test_display_regions \
 	test_espdl_backend_config test_espdl_error_check \
+	test_espdl_camera_adapter \
 	test_espdl_pixel_mode test_espdl_roi_filter \
 	test_espdl_alloc_policy \
 	test_espdl_private_pool test_espdl_tie_selftest
@@ -51,6 +53,22 @@ test_face_presence: test_face_presence.c \
 	$(ROOT)/include/agentguard/vision.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_face_presence.c \
 		$(ROOT)/src/face_presence.c -o $@
+
+test_face_authority_heuristic: test_face_authority.c \
+	$(ROOT)/src/face_authority.c $(ROOT)/src/face_fallback.c \
+	$(ROOT)/src/face_presence.c \
+	$(ROOT)/include/agentguard/face_authority.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include $< \
+		$(ROOT)/src/face_authority.c $(ROOT)/src/face_fallback.c \
+		$(ROOT)/src/face_presence.c -o $@
+
+test_face_authority_espdl: test_face_authority.c \
+	$(ROOT)/src/face_authority.c $(ROOT)/src/face_fallback.c \
+	$(ROOT)/src/face_presence.c \
+	$(ROOT)/include/agentguard/face_authority.h
+	$(CC) $(CFLAGS) -DCONFIG_AGENTGUARD_ESP_DL=1 \
+		-I$(ROOT)/include $< $(ROOT)/src/face_authority.c \
+		$(ROOT)/src/face_fallback.c $(ROOT)/src/face_presence.c -o $@
 
 test_storage: test_storage.c $(ROOT)/src/storage.c $(ROOT)/src/core.c \
 	$(ROOT)/include/agentguard/storage.h $(ROOT)/include/agentguard/core.h
@@ -122,6 +140,12 @@ test_espdl_error_check: test_espdl_error_check.c \
 	$(ROOT)/compat/espdl/esp_log.h
 	$(CC) $(CFLAGS) -DNDEBUG -I$(ROOT)/compat/espdl $< -o $@
 
+test_espdl_camera_adapter: test_espdl_camera_adapter.c \
+	$(ROOT)/src/espdl_camera_adapter.c \
+	$(ROOT)/include/agentguard/espdl_camera_adapter.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include $< \
+		$(ROOT)/src/espdl_camera_adapter.c -o $@
+
 test_espdl_pixel_mode: test_espdl_pixel_mode.c \
 	$(ROOT)/include/agentguard/espdl_pixel_mode.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include $< -o $@
@@ -161,6 +185,8 @@ test: $(TARGETS)
 	./test_face_diagnostics
 	./test_face_fallback
 	./test_face_presence
+	./test_face_authority_heuristic
+	./test_face_authority_espdl
 	./test_storage
 	./test_display_ui
 	./test_frame_timing
@@ -173,6 +199,7 @@ test: $(TARGETS)
 	./test_display_regions
 	./test_espdl_backend_config
 	./test_espdl_error_check
+	./test_espdl_camera_adapter
 	./test_espdl_pixel_mode
 	./test_espdl_roi_filter
 	./test_espdl_alloc_policy
@@ -181,6 +208,7 @@ test: $(TARGETS)
 	python3 test_espdl_upstream_wrapper.py
 	python3 test_espdl_tie_no_stdio.py
 	python3 test_lcd_dma_config.py
+	python3 test_camera_orientation.py
 
 clean:
 	$(RM) $(TARGETS)

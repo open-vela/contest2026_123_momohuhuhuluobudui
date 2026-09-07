@@ -11,11 +11,12 @@
 #define CONFIG_SPIRAM_XIP_FROM_PSRAM 0
 #define CONFIG_ESP32P4_BOOST 0
 
-/* After release preprocessing was restored, isolate all remaining optimized
- * operators behind a complete portable-C diagnostic backend. */
-#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C 1
-#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_CONV 1
-#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_DEPTHWISE 1
+/* Production follows the official ESP32-S3 Xtensa/TIE dispatch.  The C-only
+ * switches remain available for diagnostics, but portable C Conv and
+ * DepthwiseConv do not reproduce the official quantized model outputs. */
+#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C 0
+#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_CONV 0
+#define CONFIG_AGENTGUARD_ESP_DL_FORCE_C_DEPTHWISE 0
 #define CONFIG_AGENTGUARD_FACE_SCORE_THRESHOLD_PERCENT 50
 
 #define CONFIG_HUMAN_FACE_DETECT_MODEL_IN_FLASH_RODATA 1

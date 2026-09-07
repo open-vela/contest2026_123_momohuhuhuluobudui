@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "agentguard/vision_model.h"
+#include "agentguard/espdl_camera_adapter.h"
 #include "agentguard/espdl_tie_selftest.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <list>
@@ -31,6 +33,8 @@ ag_rgb565_fingerprint g_reference_raw;
 ag_face_detector_trace g_reference_trace;
 ag_face_diag_snapshot g_previous_snapshot;
 uint32_t g_face_diag_sequence;
+uint16_t *g_model_rgb565be;
+size_t g_model_rgb565be_capacity;
 
 uint64_t monotonic_ms()
 {
@@ -87,6 +91,41 @@ void summarize_detections(
   trace->mnp_accepted = detection_count(detections);
   trace->final_faces = trace->mnp_accepted;
   trace->valid = true;
+}
+
+void fingerprint_tensor(dl::TensorBase *tensor,
+                        struct ag_data_fingerprint *output)
+{
+  if (tensor == nullptr || output == nullptr)
+    {
+      return;
+    }
+
+  if (tensor->dtype == dl::DATA_TYPE_INT8)
+    {
+      ag_face_diag_fingerprint_tensor(
+        tensor->get_element_ptr<int8_t>(),
+        static_cast<uint32_t>(tensor->get_size()), sizeof(int8_t), true,
+        output);
+    }
+  else if (tensor->dtype == dl::DATA_TYPE_INT16)
+    {
+      ag_face_diag_fingerprint_tensor(
+        tensor->get_element_ptr<int16_t>(),
+        static_cast<uint32_t>(tensor->get_size()), sizeof(int16_t), true,
+        output);
+    }
+}
+
+void capture_msr_outputs(HumanFaceDetect *detector,
+                         struct ag_face_detector_trace *trace)
+{
+  dl::Model *model = detector->get_raw_model(0);
+
+  fingerprint_tensor(model->get_output("score0"), &trace->msr_score0);
+  fingerprint_tensor(model->get_output("box0"), &trace->msr_box0);
+  fingerprint_tensor(model->get_output("score1"), &trace->msr_score1);
+  fingerprint_tensor(model->get_output("box1"), &trace->msr_box1);
 }
 
 } // namespace
@@ -159,6 +198,7 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
       std::list<dl::detect::result_t> &reference_detections =
         g_detector->run(reference_image);
       summarize_detections(reference_detections, &g_reference_trace);
+      capture_msr_outputs(g_detector, &g_reference_trace);
       g_diagnostics.reference_score_percent =
         maximum_score_percent(reference_detections);
       g_diagnostics.reference_face_count = detection_count(reference_detections);
@@ -170,8 +210,37 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
       return 0;
     }
 
+  size_t pixel_count = static_cast<size_t>(width) * height;
+  if (pixel_count > SIZE_MAX / sizeof(*g_model_rgb565be))
+    {
+      return -1;
+    }
+
+  if (g_model_rgb565be_capacity < pixel_count)
+    {
+      void *resized = std::realloc(g_model_rgb565be,
+                                   pixel_count * sizeof(uint16_t));
+      if (resized == nullptr)
+        {
+          return -1;
+        }
+
+      g_model_rgb565be = static_cast<uint16_t *>(resized);
+      g_model_rgb565be_capacity = pixel_count;
+    }
+
+  /* NuttX exposes the OV2640 frame as little-endian RGB565 words, while the
+   * official ESP32-S3 detector preprocessors consume big-endian RGB565.
+   * Keep the camera/display buffer untouched and adapt only the model copy. */
+
+  if (!ag_espdl_camera_rgb565be_copy(g_model_rgb565be, pixels,
+                                     pixel_count))
+    {
+      return -1;
+    }
+
   dl::image::img_t image = {
-    .data = const_cast<uint16_t *>(pixels),
+    .data = g_model_rgb565be,
     .width = width,
     .height = height,
     .pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB565,
@@ -185,6 +254,7 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
   std::list<dl::detect::result_t> &detections = g_detector->run(image);
   uint64_t inference_finished_ms = monotonic_ms();
   summarize_detections(detections, &live_trace);
+  capture_msr_outputs(g_detector, &live_trace);
   g_face_diag_sequence++;
   ag_face_diag_prepare_snapshot(
     g_previous_snapshot.valid ? &g_previous_snapshot : nullptr,
