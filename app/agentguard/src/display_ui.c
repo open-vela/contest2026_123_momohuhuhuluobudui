@@ -17,6 +17,28 @@
 #define AG_UI_DARK_BLUE   0x0861
 #define AG_UI_DARK_GRAY   0x2104
 
+void ag_ui_format_face_count(char *buffer, size_t buffer_size,
+                             const struct ag_ui_status *status)
+{
+  if (buffer == NULL || buffer_size == 0 || status == NULL)
+    {
+      return;
+    }
+
+  if (status->ai_error)
+    {
+      snprintf(buffer, buffer_size, "FACE:--");
+    }
+  else if (status->face_count > 9)
+    {
+      snprintf(buffer, buffer_size, "FACE:9+");
+    }
+  else
+    {
+      snprintf(buffer, buffer_size, "FACE:%u", status->face_count);
+    }
+}
+
 static const uint8_t *ag_ui_glyph(char character)
 {
   static const uint8_t blank[5] = {0, 0, 0, 0, 0};
@@ -504,7 +526,7 @@ static void ag_ui_text(uint16_t *pixels, uint16_t stride, unsigned int x,
 
 uint16_t ag_ui_face_color(const struct ag_ui_status *status)
 {
-  if (status == NULL || status->face_count == 0)
+  if (status == NULL || status->ai_error || status->face_count == 0)
     {
       return AG_UI_RED;
     }
@@ -544,9 +566,15 @@ void ag_ui_rotate_180_rgb565(uint16_t *pixels, uint16_t width,
     }
 }
 
-static const char *ag_ui_primary_status(const struct ag_ui_status *status,
-                                        uint16_t *color)
+const char *ag_ui_primary_status(const struct ag_ui_status *status,
+                                 uint16_t *color)
 {
+  if (status->ai_error)
+    {
+      *color = AG_UI_RED;
+      return "AI ERROR";
+    }
+
   if (status->reminders_paused)
     {
       *color = AG_UI_CYAN;
@@ -636,15 +664,7 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
                  AG_UI_WHITE);
     }
 
-  if (status->face_count > 9)
-    {
-      snprintf(face_text, sizeof(face_text), "FACE:9+");
-    }
-  else
-    {
-      snprintf(face_text, sizeof(face_text), "FACE:%u",
-               status->face_count);
-    }
+  ag_ui_format_face_count(face_text, sizeof(face_text), status);
 
   ag_ui_text(pixels, frame_width, origin_x + 19, origin_y + 5,
              face_text, AG_UI_WHITE);

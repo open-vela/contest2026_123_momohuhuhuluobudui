@@ -56,8 +56,13 @@ struct ag_ui_status
   bool awaiting_ack;
   bool activity_on;
   bool camera_stale;
+  bool ai_error;
 };
 
+void ag_ui_format_face_count(char *buffer, size_t buffer_size,
+                             const struct ag_ui_status *status);
+const char *ag_ui_primary_status(const struct ag_ui_status *status,
+                                 uint16_t *color);
 void ag_ui_format_model_diagnostics(char *buffer, size_t buffer_size,
                                     uint8_t msr_candidates,
                                     uint32_t inference_ms,

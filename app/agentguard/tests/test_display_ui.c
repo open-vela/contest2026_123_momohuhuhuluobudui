@@ -22,6 +22,24 @@ int main(void)
   uint16_t no_face_color;
   uint16_t one_face_color;
   uint16_t multiple_color;
+  uint16_t status_color;
+
+  memset(&status, 0, sizeof(status));
+  ag_ui_format_face_count(diagnostics, sizeof(diagnostics), &status);
+  assert(strcmp(diagnostics, "FACE:0") == 0);
+  status.face_count = 1;
+  ag_ui_format_face_count(diagnostics, sizeof(diagnostics), &status);
+  assert(strcmp(diagnostics, "FACE:1") == 0);
+  status.face_count = 10;
+  ag_ui_format_face_count(diagnostics, sizeof(diagnostics), &status);
+  assert(strcmp(diagnostics, "FACE:9+") == 0);
+
+  status.ai_error = true;
+  ag_ui_format_face_count(diagnostics, sizeof(diagnostics), &status);
+  assert(strcmp(diagnostics, "FACE:--") == 0);
+  assert(strcmp(ag_ui_primary_status(&status, &status_color),
+                "AI ERROR") == 0);
+  assert(status_color == ag_ui_face_color(&status));
 
   ag_ui_format_model_diagnostics(diagnostics, sizeof(diagnostics), 3, 847,
                                  false, false, false);
@@ -235,8 +253,13 @@ int main(void)
   assert(ag_ui_face_color(&status) != one_face_color);
 
   status.camera_stale = true;
+  status.ai_error = true;
+  status.camera_phase = 7;
   ag_ui_render_rgb565(frame, WIDTH, HEIGHT, VIEW_WIDTH, HEIGHT, &status);
   assert(frame[(HEIGHT - 34 + 5) * WIDTH + VIEW_X + 5] != 0x5555);
+  /* At the first glyph's bottom row, C is blank while A is set.  Seeing the
+   * footer background proves CAM:7 was selected ahead of AI ERROR. */
+  assert(frame[(HEIGHT - 34 + 11) * WIDTH + VIEW_X + 5] == 0x2104);
 
   puts("AgentGuard display UI tests: PASS");
   return 0;
