@@ -28,5 +28,12 @@ bool ag_preview_map_face(const struct ag_face_box *source,
                          uint16_t source_height,
                          const struct ag_preview_area *area,
                          struct ag_face_box *destination);
+size_t ag_preview_map_faces(const struct ag_face_box *source,
+                            size_t source_count,
+                            uint16_t source_width,
+                            uint16_t source_height,
+                            const struct ag_preview_area *area,
+                            struct ag_face_box *destination,
+                            size_t destination_capacity);
 
 #endif

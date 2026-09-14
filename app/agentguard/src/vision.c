@@ -200,14 +200,22 @@ int ag_vision_process_rgb565(struct ag_vision_context *context,
       if (tail >= AG_MIN_FACE_CELLS && max_x - min_x >= 3 &&
           max_y - min_y >= 3)
         {
+          struct ag_face_box face;
+
+          face.x = min_x * AG_GRID_STEP;
+          face.y = min_y * AG_GRID_STEP;
+          face.width = (max_x - min_x + 1) * AG_GRID_STEP;
+          face.height = (max_y - min_y + 1) * AG_GRID_STEP;
+          if (result->face_box_count < AG_MAX_FACE_BOXES)
+            {
+              result->face_boxes[result->face_box_count++] = face;
+            }
+
           face_count++;
           if (tail > largest)
             {
               largest = tail;
-              primary.x = min_x * AG_GRID_STEP;
-              primary.y = min_y * AG_GRID_STEP;
-              primary.width = (max_x - min_x + 1) * AG_GRID_STEP;
-              primary.height = (max_y - min_y + 1) * AG_GRID_STEP;
+              primary = face;
             }
         }
     }

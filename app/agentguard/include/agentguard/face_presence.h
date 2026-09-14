@@ -12,7 +12,9 @@ struct ag_face_presence_state
 {
   uint64_t last_seen_ms;
   uint8_t face_count;
+  uint8_t face_box_count;
   struct ag_face_box primary_face;
+  struct ag_face_box face_boxes[AG_MAX_FACE_BOXES];
   bool have_face;
 };
 

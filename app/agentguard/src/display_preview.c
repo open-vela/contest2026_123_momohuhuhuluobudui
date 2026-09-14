@@ -101,3 +101,35 @@ bool ag_preview_map_face(const struct ag_face_box *source,
   destination->height = (uint16_t)(bottom - top);
   return destination->width != 0 && destination->height != 0;
 }
+
+size_t ag_preview_map_faces(const struct ag_face_box *source,
+                            size_t source_count,
+                            uint16_t source_width,
+                            uint16_t source_height,
+                            const struct ag_preview_area *area,
+                            struct ag_face_box *destination,
+                            size_t destination_capacity)
+{
+  size_t source_index;
+  size_t destination_count = 0;
+
+  if (source == NULL || destination == NULL)
+    {
+      return 0;
+    }
+
+  for (source_index = 0;
+       source_index < source_count &&
+       destination_count < destination_capacity;
+       source_index++)
+    {
+      if (ag_preview_map_face(&source[source_index],
+                              source_width, source_height, area,
+                              &destination[destination_count]))
+        {
+          destination_count++;
+        }
+    }
+
+  return destination_count;
+}

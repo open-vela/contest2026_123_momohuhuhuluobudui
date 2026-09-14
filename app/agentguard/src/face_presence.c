@@ -22,11 +22,26 @@ void ag_face_presence_filter(struct ag_face_presence_state *state,
       return;
     }
 
+  if (state->have_face && now_ms >= state->last_seen_ms &&
+      now_ms - state->last_seen_ms <= hold_ms &&
+      result->face_count < state->face_count)
+    {
+      result->face_count = state->face_count;
+      result->face_box_count = state->face_box_count;
+      result->primary_face = state->primary_face;
+      memcpy(result->face_boxes, state->face_boxes,
+             sizeof(result->face_boxes));
+      return;
+    }
+
   if (result->face_count > 0)
     {
       state->last_seen_ms = now_ms;
       state->face_count = result->face_count;
+      state->face_box_count = result->face_box_count;
       state->primary_face = result->primary_face;
+      memcpy(state->face_boxes, result->face_boxes,
+             sizeof(state->face_boxes));
       state->have_face = true;
       return;
     }
@@ -36,13 +51,5 @@ void ag_face_presence_filter(struct ag_face_presence_state *state,
       return;
     }
 
-  if (now_ms < state->last_seen_ms ||
-      now_ms - state->last_seen_ms > hold_ms)
-    {
-      ag_face_presence_reset(state);
-      return;
-    }
-
-  result->face_count = state->face_count;
-  result->primary_face = state->primary_face;
+  ag_face_presence_reset(state);
 }

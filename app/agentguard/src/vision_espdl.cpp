@@ -282,16 +282,20 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
           continue;
         }
 
+      ag_face_box face = {
+        .x = left,
+        .y = top,
+        .width = static_cast<uint16_t>(right - left + 1),
+        .height = static_cast<uint16_t>(bottom - top + 1),
+      };
+      next.face_boxes[next.face_box_count++] = face;
       next.face_count++;
       int area = static_cast<int>(right - left + 1) *
                  static_cast<int>(bottom - top + 1);
       if (area > largest_area)
         {
           largest_area = area;
-          next.primary_face.x = left;
-          next.primary_face.y = top;
-          next.primary_face.width = right - left + 1;
-          next.primary_face.height = bottom - top + 1;
+          next.primary_face = face;
         }
     }
 

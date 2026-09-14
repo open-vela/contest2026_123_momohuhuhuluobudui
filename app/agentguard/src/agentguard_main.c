@@ -186,7 +186,8 @@ struct ag_display_worker
   uint16_t *hud_pixels;
   struct ag_display_regions_state regions;
   struct ag_ui_status status;
-  struct ag_face_box face;
+  struct ag_face_box faces[AG_MAX_FACE_BOXES];
+  uint8_t face_box_count;
   uint64_t last_camera_ms;
   bool have_frame;
 };
@@ -663,10 +664,13 @@ static void *ag_display_worker_main(void *argument)
 {
   struct ag_display_worker *worker = argument;
   struct ag_ui_status status;
-  struct ag_face_box face;
-  struct ag_face_box mapped_face;
+  struct ag_face_box faces[AG_MAX_FACE_BOXES];
+  struct ag_face_box mapped_faces[AG_MAX_FACE_BOXES];
   struct ag_lcd_timing_state lcd_timing;
   struct ag_lcd_submit_timing_state submit_timing;
+  size_t face_box_count;
+  size_t mapped_face_count;
+  size_t face_index;
   uint64_t last_camera_ms;
   uint64_t now_ms;
   bool have_frame;
@@ -696,7 +700,8 @@ static void *ag_display_worker_main(void *argument)
         ag_espdl_tie_conv_selftest_get_result(&status.tie_ram_pass,
                                               &status.tie_flash_pass);
 #endif
-      face = worker->face;
+      face_box_count = worker->face_box_count;
+      memcpy(faces, worker->faces, sizeof(faces));
       last_camera_ms = worker->last_camera_ms;
       pthread_mutex_unlock(&worker->lock);
 
@@ -708,7 +713,7 @@ static void *ag_display_worker_main(void *argument)
 
       if (!have_frame)
         {
-          memset(&face, 0, sizeof(face));
+          face_box_count = 0;
         }
 
       memset(worker->screen_pixels, 0, AG_LCD_FRAME_BYTES);
@@ -720,27 +725,26 @@ static void *ag_display_worker_main(void *argument)
                                    &g_agentguard_preview_area))
         {
           have_frame = false;
-          memset(&face, 0, sizeof(face));
+          face_box_count = 0;
         }
 
-      if (have_frame &&
-          !ag_preview_map_face(&face, AG_WIDTH, AG_HEIGHT,
-                               &g_agentguard_preview_area, &mapped_face))
-        {
-          memset(&face, 0, sizeof(face));
-        }
-      else if (have_frame)
-        {
-          face = mapped_face;
-        }
+      mapped_face_count = have_frame ?
+        ag_preview_map_faces(faces, face_box_count, AG_WIDTH, AG_HEIGHT,
+                             &g_agentguard_preview_area, mapped_faces,
+                             AG_MAX_FACE_BOXES) : 0;
 
       now_ms = ag_now_ms();
       status.activity_on = ((now_ms / 500u) & 1u) != 0;
       status.camera_stale = !have_frame ||
                             now_ms - last_camera_ms >=
                             AG_CAMERA_FRAME_TIMEOUT_MS;
-      ag_draw_face_box(worker->screen_pixels, AG_LCD_WIDTH, AG_LCD_HEIGHT,
-                       &face, ag_ui_face_color(&status));
+      for (face_index = 0; face_index < mapped_face_count; face_index++)
+        {
+          ag_draw_face_box(worker->screen_pixels,
+                           AG_LCD_WIDTH, AG_LCD_HEIGHT,
+                           &mapped_faces[face_index],
+                           ag_ui_face_color(&status));
+        }
       ag_ui_render_oriented_rgb565(worker->screen_pixels,
                                    AG_LCD_WIDTH, AG_LCD_HEIGHT,
                                    worker->display->width,
@@ -833,7 +837,7 @@ fail_buffers:
 static void ag_display_publish(struct ag_display_worker *worker,
                                const uint16_t *pixels,
                                const struct ag_ui_status *status,
-                               const struct ag_face_box *face,
+                               const struct ag_vision_result *vision_result,
                                uint64_t now_ms)
 {
   if (worker->latest_pixels == NULL)
@@ -844,7 +848,9 @@ static void ag_display_publish(struct ag_display_worker *worker,
   pthread_mutex_lock(&worker->lock);
   memcpy(worker->latest_pixels, pixels, AG_FRAME_BYTES);
   worker->status = *status;
-  worker->face = *face;
+  worker->face_box_count = vision_result->face_box_count;
+  memcpy(worker->faces, vision_result->face_boxes,
+         sizeof(worker->faces));
   worker->last_camera_ms = now_ms;
   worker->have_frame = true;
   pthread_mutex_unlock(&worker->lock);
@@ -1261,7 +1267,6 @@ static int ag_run(void)
             (uint16_t *)frame.m.userptr, AG_WIDTH, AG_HEIGHT,
             ag_now_ms(), AG_FACE_PRESENCE_HOLD_MS,
             &face_presence, &vision_result);
-          struct ag_face_box display_face = vision_result.primary_face;
 
           observation.monotonic_ms = ag_now_ms();
           observation.face_count = vision_result.face_count;
@@ -1333,7 +1338,7 @@ static int ag_run(void)
 
           ag_display_publish(&display_worker,
                              (uint16_t *)frame.m.userptr,
-                             &ui_status, &display_face,
+                             &ui_status, &vision_result,
                              observation.monotonic_ms);
         }
 

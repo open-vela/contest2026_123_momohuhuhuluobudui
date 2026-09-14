@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define AG_MAX_FACE_BOXES 8
+
 struct ag_face_box
 {
   uint16_t x;
@@ -17,8 +19,10 @@ struct ag_face_box
 struct ag_vision_result
 {
   uint8_t face_count;
+  uint8_t face_box_count;
   uint8_t posture_score;
   struct ag_face_box primary_face;
+  struct ag_face_box face_boxes[AG_MAX_FACE_BOXES];
 };
 
 struct ag_vision_context

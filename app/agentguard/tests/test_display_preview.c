@@ -97,6 +97,30 @@ static void test_face_box_clips_to_source_frame(void)
   assert(destination.width == 0);
 }
 
+static void test_all_face_boxes_are_mapped(void)
+{
+  const struct ag_preview_area area =
+  {
+    .x = 20,
+    .y = 37,
+    .width = 200,
+    .height = 150
+  };
+  const struct ag_face_box source[2] =
+  {
+    {.x = 32, .y = 24, .width = 64, .height = 72},
+    {.x = 192, .y = 48, .width = 80, .height = 96}
+  };
+  struct ag_face_box destination[2];
+
+  assert(ag_preview_map_faces(source, 2, 320, 240, &area,
+                              destination, 2) == 2);
+  assert(destination[0].x == 40 && destination[0].y == 52);
+  assert(destination[0].width == 40 && destination[0].height == 45);
+  assert(destination[1].x == 140 && destination[1].y == 67);
+  assert(destination[1].width == 50 && destination[1].height == 60);
+}
+
 static void test_scale_rejects_out_of_bounds_area(void)
 {
   const uint16_t source[4] = {1, 2, 3, 4};
@@ -119,6 +143,7 @@ int main(void)
   test_scale_uses_nearest_source_pixels();
   test_face_box_maps_and_rounds_outward();
   test_face_box_clips_to_source_frame();
+  test_all_face_boxes_are_mapped();
   test_scale_rejects_out_of_bounds_area();
   puts("AgentGuard display preview tests: PASS");
   return 0;

@@ -60,6 +60,13 @@ int main(void)
   assert(ag_vision_process_rgb565(&context, frame, WIDTH, HEIGHT,
                                   &result) == 0);
   assert(result.face_count == 2);
+  assert(result.face_box_count == 2);
+  assert(result.face_boxes[0].x == 60 && result.face_boxes[0].y == 40);
+  assert(result.face_boxes[0].width == 56 &&
+         result.face_boxes[0].height == 68);
+  assert(result.face_boxes[1].x == 212 && result.face_boxes[1].y == 48);
+  assert(result.face_boxes[1].width == 48 &&
+         result.face_boxes[1].height == 60);
 
   puts("AgentGuard vision tests: PASS");
   return 0;

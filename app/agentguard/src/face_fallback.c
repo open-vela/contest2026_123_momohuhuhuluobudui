@@ -149,7 +149,9 @@ bool ag_face_fallback_apply_rgb565(const uint16_t *pixels,
     }
 
   result->face_count = 1;
+  result->face_box_count = 1;
   result->posture_score = 0;
   result->primary_face = primary;
+  result->face_boxes[0] = primary;
   return true;
 }
