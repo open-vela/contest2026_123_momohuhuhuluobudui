@@ -4,7 +4,7 @@ CFLAGS ?= -std=c11 -Wall -Wextra -Werror -pedantic -O2
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 
 ROOT := ..
-TARGETS := test_core test_vision test_diagnostic_fingerprint \
+TARGETS := test_core test_vision test_vision_health test_diagnostic_fingerprint \
 	test_face_diagnostics test_face_fallback test_face_presence \
 	test_face_authority_heuristic test_face_authority_espdl \
 	test_storage test_display_ui \
@@ -25,6 +25,11 @@ test_core: test_core.c $(ROOT)/src/core.c $(ROOT)/include/agentguard/core.h
 
 test_vision: test_vision.c $(ROOT)/src/vision.c $(ROOT)/include/agentguard/vision.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_vision.c $(ROOT)/src/vision.c -o $@
+
+test_vision_health: test_vision_health.c $(ROOT)/src/vision_health.c \
+	$(ROOT)/include/agentguard/vision_health.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_vision_health.c \
+		$(ROOT)/src/vision_health.c -o $@
 
 test_diagnostic_fingerprint: test_diagnostic_fingerprint.c \
 	$(ROOT)/src/diagnostic_fingerprint.c \
@@ -181,6 +186,7 @@ test_espdl_tie_selftest: test_espdl_tie_selftest.cpp \
 test: $(TARGETS)
 	./test_core
 	./test_vision
+	./test_vision_health
 	./test_diagnostic_fingerprint
 	./test_face_diagnostics
 	./test_face_fallback
