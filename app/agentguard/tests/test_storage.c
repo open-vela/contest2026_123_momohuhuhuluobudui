@@ -67,10 +67,35 @@ static void test_size_fallback_without_wall_clock(void)
   unlink(path);
 }
 
+static void test_ai_health_event_stats(void)
+{
+  const char *path = "/tmp/agentguard-storage-ai-health-test.jsonl";
+  const char *error_event =
+    "{\"event\":\"ai_error\",\"monotonic_ms\":1}";
+  const char *recovered_event =
+    "{\"event\":\"ai_recovered\",\"monotonic_ms\":2}";
+  struct ag_log_policy policy =
+  {
+    .retention_ms = 7 * DAY_MS,
+    .max_bytes = 4096,
+  };
+  struct ag_log_stats stats;
+
+  unlink(path);
+  assert(ag_log_append(path, error_event, 0, &policy) == 0);
+  assert(ag_log_append(path, recovered_event, 0, &policy) == 0);
+  assert(ag_log_read_stats(path, &stats) == 0);
+  assert(stats.total_events == 2);
+  assert(ag_log_event_count(&stats, AG_EVENT_AI_ERROR) == 1);
+  assert(ag_log_event_count(&stats, AG_EVENT_AI_RECOVERED) == 1);
+  unlink(path);
+}
+
 int main(void)
 {
   test_retention_and_stats();
   test_size_fallback_without_wall_clock();
+  test_ai_health_event_stats();
   puts("AgentGuard storage tests: PASS");
   return 0;
 }

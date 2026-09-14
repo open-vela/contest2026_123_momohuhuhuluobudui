@@ -10,6 +10,23 @@ static bool ag_elapsed(uint64_t now, uint64_t since, uint64_t duration)
   return now >= since && now - since >= duration;
 }
 
+static void ag_shift_timestamp(uint64_t *timestamp, uint64_t duration)
+{
+  if (*timestamp == 0)
+    {
+      return;
+    }
+
+  if (duration > UINT64_MAX - *timestamp)
+    {
+      *timestamp = UINT64_MAX;
+    }
+  else
+    {
+      *timestamp += duration;
+    }
+}
+
 void ag_default_config(struct ag_config *config)
 {
   memset(config, 0, sizeof(*config));
@@ -102,6 +119,30 @@ uint32_t ag_step(struct ag_state *state, const struct ag_config *config,
   bool has_face = observation->face_count > 0;
 
   events = ag_apply_command(state, observation->command);
+
+  if (!observation->vision_valid)
+    {
+      if (!state->vision_paused)
+        {
+          state->vision_paused = true;
+          state->vision_paused_since_ms = now;
+        }
+
+      return events;
+    }
+
+  if (state->vision_paused)
+    {
+      uint64_t paused_ms = now >= state->vision_paused_since_ms ?
+        now - state->vision_paused_since_ms : 0;
+
+      ag_shift_timestamp(&state->presence_since_ms, paused_ms);
+      ag_shift_timestamp(&state->absence_since_ms, paused_ms);
+      ag_shift_timestamp(&state->poor_posture_since_ms, paused_ms);
+      ag_shift_timestamp(&state->awaiting_ack_since_ms, paused_ms);
+      state->vision_paused = false;
+      state->vision_paused_since_ms = 0;
+    }
 
   /* Acknowledging a reminder starts a fresh sitting interval.  Without this
    * reset the same observation could immediately raise a second alert. */
@@ -302,6 +343,8 @@ const char *ag_event_name(enum ag_event event)
       case AG_EVENT_ACKNOWLEDGED: return "acknowledged";
       case AG_EVENT_BRIGHTNESS_UP: return "brightness_up";
       case AG_EVENT_BRIGHTNESS_DOWN: return "brightness_down";
+      case AG_EVENT_AI_ERROR: return "ai_error";
+      case AG_EVENT_AI_RECOVERED: return "ai_recovered";
       default: return "none";
     }
 }

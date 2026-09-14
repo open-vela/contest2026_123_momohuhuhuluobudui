@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 #define AG_STORAGE_VALID_UNIX_MS 1577836800000ull
-#define AG_STORAGE_EVENT_SLOTS 14
+#define AG_STORAGE_EVENT_SLOTS 16
 
 struct ag_log_policy
 {
