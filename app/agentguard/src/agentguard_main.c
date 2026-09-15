@@ -1139,6 +1139,7 @@ static int ag_run(void)
   bool was_pressed = false;
   bool inference_ok;
   bool inference_trusted;
+  uint64_t acknowledged_until_ms = 0;
   uint32_t frame_sequence = 0;
   int led_fd;
   int button_fd;
@@ -1273,6 +1274,10 @@ static int ag_run(void)
                                                &vision_result);
       observation.monotonic_ms = ag_now_ms();
       observation.command = ag_read_button(button_fd, &was_pressed);
+      if (observation.command == AG_COMMAND_ACKNOWLEDGE)
+        {
+          acknowledged_until_ms = observation.monotonic_ms + 2000;
+        }
       observation.vision_valid = inference_trusted;
 
       if (health_transition == AG_VISION_HEALTH_ENTERED_ERROR)
@@ -1300,6 +1305,8 @@ static int ag_run(void)
                              observation.monotonic_ms, &state, led_fd);
           memset(&ui_status, 0, sizeof(ui_status));
           ui_status.frame_sequence = ++frame_sequence;
+          ui_status.acknowledged =
+            observation.monotonic_ms < acknowledged_until_ms;
           ui_status.camera_phase = 7;
           ui_status.face_count = vision_result.face_count;
           ui_status.posture_score = vision_result.posture_score;

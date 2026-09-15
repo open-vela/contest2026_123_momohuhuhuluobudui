@@ -73,6 +73,24 @@
 
 ## Global Constraints
 
+### Approved UI Follow-up (2026-09-15)
+
+The user approved restoring the sitting timer and adding visible BOOT
+acknowledgement feedback. Normal footer detail now always displays
+`SIT:mm:ss FRM:nnnnn`; diagnostic formatters remain available but no longer
+replace that line. A BOOT acknowledgement shows `ACKNOWLEDGED` for about
+two seconds on trusted frames. Camera errors, AI errors, and active reminder
+alerts retain priority. No detector or reminder thresholds changed.
+
+The timer regression failed against the old diagnostic-priority renderer;
+the ACK test initially failed for the missing UI field. Full host suite and
+target build now pass, with no Critical/Important issues in independent
+review. Image size: 2,414,468 bytes; SHA256:
+`0e35f0064d6c2f3a5b08fc71fb07aa437e8cf2fc068fa07348652348b10694cf`.
+BOOT input and visible two-second expiry still need physical verification.
+
+### Original AI Safe-State Constraints
+
 - Enter AI error after exactly 3 consecutive failed inference attempts.
 - Recover after exactly 2 consecutive successful inference attempts.
 - Freeze face-dependent timers from the first failed attempt until recovery.

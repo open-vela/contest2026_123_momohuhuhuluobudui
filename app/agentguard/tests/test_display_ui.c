@@ -261,6 +261,35 @@ int main(void)
    * footer background proves CAM:7 was selected ahead of AI ERROR. */
   assert(frame[(HEIGHT - 34 + 11) * WIDTH + VIEW_X + 5] == 0x2104);
 
+  /* Diagnostic flags must not hide the user-visible sitting timer. */
+  memset(&status, 0, sizeof(status));
+  status.face_count = 1;
+  status.calibrated = true;
+  status.seated_ms = 125000;
+  ag_ui_render_rgb565(frame, WIDTH, HEIGHT, VIEW_WIDTH, HEIGHT, &status);
+  {
+    uint16_t timer_row[WIDTH * 7];
+    memcpy(timer_row, &frame[(HEIGHT - 34 + 19) * WIDTH], sizeof(timer_row));
+    status.model_diagnostics_valid = true;
+    status.face_diagnostics_valid = true;
+    ag_ui_render_rgb565(frame, WIDTH, HEIGHT, VIEW_WIDTH, HEIGHT, &status);
+    assert(memcmp(timer_row, &frame[(HEIGHT - 34 + 19) * WIDTH],
+                  sizeof(timer_row)) == 0);
+  }
+  status.acknowledged = true;
+  {
+    uint16_t color;
+    assert(strcmp(ag_ui_primary_status(&status, &color), "ACKNOWLEDGED") == 0);
+    status.ai_error = true;
+    assert(strcmp(ag_ui_primary_status(&status, &color), "AI ERROR") == 0);
+    status.ai_error = false;
+    status.awaiting_ack = true;
+    assert(strcmp(ag_ui_primary_status(&status, &color),
+                  "PRESS BOOT TO ACK") == 0);
+    status.awaiting_ack = false;
+    status.acknowledged = false;
+    assert(strcmp(ag_ui_primary_status(&status, &color), "MONITORING") == 0);
+  }
   puts("AgentGuard display UI tests: PASS");
   return 0;
 }
