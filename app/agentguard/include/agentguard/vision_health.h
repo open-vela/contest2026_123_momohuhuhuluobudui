@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "agentguard/vision.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,8 @@ struct ag_vision_health_state
 void ag_vision_health_init(struct ag_vision_health_state *state);
 enum ag_vision_health_transition ag_vision_health_update(
   struct ag_vision_health_state *state, bool inference_ok);
+bool ag_vision_health_gate(const struct ag_vision_health_state *state,
+                           bool inference_ok, struct ag_vision_result *result);
 
 #ifdef __cplusplus
 }

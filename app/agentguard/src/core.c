@@ -128,6 +128,11 @@ uint32_t ag_step(struct ag_state *state, const struct ag_config *config,
           state->vision_paused_since_ms = now;
         }
 
+      if (observation->command == AG_COMMAND_ACKNOWLEDGE && state->present)
+        {
+          state->vision_ack_pending = true;
+        }
+
       return events;
     }
 
@@ -142,6 +147,12 @@ uint32_t ag_step(struct ag_state *state, const struct ag_config *config,
       ag_shift_timestamp(&state->awaiting_ack_since_ms, paused_ms);
       state->vision_paused = false;
       state->vision_paused_since_ms = 0;
+    }
+
+  if (state->vision_ack_pending)
+    {
+      state->presence_since_ms = now;
+      state->vision_ack_pending = false;
     }
 
   /* Acknowledging a reminder starts a fresh sitting interval.  Without this

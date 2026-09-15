@@ -77,6 +77,7 @@ struct ag_state
   bool awaiting_ack;
   bool lock_sent;
   bool vision_paused;
+  bool vision_ack_pending;
   uint64_t presence_since_ms;
   uint64_t absence_since_ms;
   uint64_t poor_posture_since_ms;

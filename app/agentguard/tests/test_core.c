@@ -133,6 +133,27 @@ static void test_invalid_interval_is_excluded_from_deadlines(void)
          AG_EVENT_SEDENTARY_ALERT);
 }
 
+static void test_ack_during_invalid_vision_starts_fresh_interval(void)
+{
+  struct ag_state state;
+  struct ag_config config;
+
+  ag_init(&state);
+  ag_default_config(&config);
+  config.sedentary_ms = 100;
+  step(&state, &config, 100, 1, 0, AG_COMMAND_NONE, true);
+  assert(step(&state, &config, 200, 1, 0, AG_COMMAND_NONE, true) &
+         AG_EVENT_SEDENTARY_ALERT);
+  assert(step(&state, &config, 210, 0, 0, AG_COMMAND_ACKNOWLEDGE, false) &
+         AG_EVENT_ACKNOWLEDGED);
+  assert(!(step(&state, &config, 1210, 1, 0, AG_COMMAND_NONE, true) &
+           AG_EVENT_SEDENTARY_ALERT));
+  assert(!(step(&state, &config, 1309, 1, 0, AG_COMMAND_NONE, true) &
+           AG_EVENT_SEDENTARY_ALERT));
+  assert(step(&state, &config, 1310, 1, 0, AG_COMMAND_NONE, true) &
+         AG_EVENT_SEDENTARY_ALERT);
+}
+
 static void test_all_active_timers_shift_safely(void)
 {
   struct ag_state state;
@@ -186,6 +207,7 @@ int main(void)
   test_posture_and_break();
   test_invalid_vision_pauses_face_policy();
   test_invalid_interval_is_excluded_from_deadlines();
+  test_ack_during_invalid_vision_starts_fresh_interval();
   test_all_active_timers_shift_safely();
   test_phrases_and_json();
   puts("AgentGuard core tests: PASS");

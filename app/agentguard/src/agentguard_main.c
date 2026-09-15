@@ -15,6 +15,7 @@
 #include "agentguard/storage.h"
 #include "agentguard/thread_priority.h"
 #include "agentguard/vision.h"
+#include "agentguard/vision_health.h"
 #ifdef CONFIG_AGENTGUARD_ESP_DL
 #  include "agentguard/espdl_tie_selftest.h"
 #  include "agentguard/vision_model.h"
@@ -1117,6 +1118,8 @@ static int ag_run(void)
   struct ag_display display;
   struct ag_vision_context vision;
   struct ag_vision_result vision_result;
+  struct ag_vision_health_state vision_health;
+  enum ag_vision_health_transition health_transition;
   struct ag_face_presence_state face_presence;
   struct ag_config config;
   struct ag_state state;
@@ -1134,6 +1137,8 @@ static int ag_run(void)
   uint64_t dequeue_started_ms;
   uint64_t dequeue_finished_ms;
   bool was_pressed = false;
+  bool inference_ok;
+  bool inference_trusted;
   uint32_t frame_sequence = 0;
   int led_fd;
   int button_fd;
@@ -1217,6 +1222,7 @@ static int ag_run(void)
   led_fd = open(AG_LED_PATH, O_WRONLY);
   button_fd = open(AG_BUTTON_PATH, O_RDONLY | O_NONBLOCK);
   ag_vision_init(&vision);
+  ag_vision_health_init(&vision_health);
   ag_face_presence_reset(&face_presence);
   ag_default_config(&config);
   ag_init(&state);
@@ -1258,20 +1264,38 @@ static int ag_run(void)
       ag_ui_rotate_180_rgb565((uint16_t *)frame.m.userptr,
                               AG_WIDTH, AG_HEIGHT);
 
-      if (ag_vision_process_rgb565(&vision,
-                                   (uint16_t *)frame.m.userptr,
-                                   AG_WIDTH, AG_HEIGHT,
-                                   &vision_result) == 0)
+      inference_ok = ag_vision_process_rgb565(&vision,
+        (uint16_t *)frame.m.userptr, AG_WIDTH, AG_HEIGHT,
+        &vision_result) == 0;
+      health_transition =
+        ag_vision_health_update(&vision_health, inference_ok);
+      inference_trusted = ag_vision_health_gate(&vision_health, inference_ok,
+                                               &vision_result);
+      observation.monotonic_ms = ag_now_ms();
+      observation.command = ag_read_button(button_fd, &was_pressed);
+      observation.vision_valid = inference_trusted;
+
+      if (health_transition == AG_VISION_HEALTH_ENTERED_ERROR)
+        {
+          ag_face_presence_reset(&face_presence);
+          ag_dispatch_events(AG_EVENT_AI_ERROR, observation.monotonic_ms,
+                             &state, led_fd);
+        }
+      else if (health_transition == AG_VISION_HEALTH_RECOVERED)
+        {
+          ag_dispatch_events(AG_EVENT_AI_RECOVERED,
+                             observation.monotonic_ms, &state, led_fd);
+        }
+
+      if (inference_trusted)
         {
           ag_face_authority_apply_rgb565(
             (uint16_t *)frame.m.userptr, AG_WIDTH, AG_HEIGHT,
             ag_now_ms(), AG_FACE_PRESENCE_HOLD_MS,
             &face_presence, &vision_result);
 
-          observation.monotonic_ms = ag_now_ms();
           observation.face_count = vision_result.face_count;
           observation.posture_score = vision_result.posture_score;
-          observation.command = ag_read_button(button_fd, &was_pressed);
           ag_dispatch_events(ag_step(&state, &config, &observation),
                              observation.monotonic_ms, &state, led_fd);
           memset(&ui_status, 0, sizeof(ui_status));
@@ -1340,6 +1364,42 @@ static int ag_run(void)
                              (uint16_t *)frame.m.userptr,
                              &ui_status, &vision_result,
                              observation.monotonic_ms);
+        }
+      else
+        {
+          observation.face_count = 0;
+          observation.posture_score = 0;
+          ag_dispatch_events(ag_step(&state, &config, &observation),
+                             observation.monotonic_ms, &state, led_fd);
+
+          if (vision_health.error_active)
+            {
+              /* A failed or not-yet-recovered result must never expose old
+               * counts or held boxes as current AI output. */
+
+              memset(&vision_result, 0, sizeof(vision_result));
+              memset(&ui_status, 0, sizeof(ui_status));
+              ui_status.ai_error = true;
+              ui_status.frame_sequence = ++frame_sequence;
+              ui_status.camera_phase = 7;
+              ui_status.frame_timing_valid = frame_timing.valid;
+              ui_status.capture_interval_ms = frame_timing.capture_interval_ms;
+              ui_status.dequeue_wait_ms = frame_timing.dequeue_wait_ms;
+              ui_status.loop_interval_ms = frame_timing.loop_interval_ms;
+              ui_status.reminders_paused = state.reminders_paused;
+              ui_status.privacy_enabled = state.privacy_enabled;
+              if (state.present && state.vision_paused_since_ms >=
+                  state.presence_since_ms)
+                {
+                  ui_status.seated_ms = state.vision_paused_since_ms -
+                    state.presence_since_ms;
+                }
+
+              ag_display_publish(&display_worker,
+                                 (uint16_t *)frame.m.userptr,
+                                 &ui_status, &vision_result,
+                                 observation.monotonic_ms);
+            }
         }
 
       if (ioctl(video.fd, VIDIOC_QBUF, (uintptr_t)&frame) < 0)

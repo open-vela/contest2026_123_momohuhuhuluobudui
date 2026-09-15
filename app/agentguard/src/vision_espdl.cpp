@@ -204,8 +204,9 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
       g_diagnostics.reference_face_count = detection_count(reference_detections);
     }
 
-  if (g_frame_counter++ % kInferenceInterval != 0)
+  if (g_frame_counter % kInferenceInterval != 0)
     {
+      g_frame_counter++;
       *result = g_cached_result;
       return 0;
     }
@@ -310,5 +311,8 @@ ag_vision_model_process_rgb565(const uint16_t *pixels, uint16_t width,
   g_diagnostics.valid = 1;
   g_cached_result = next;
   *result = next;
+  /* Advance only after successful fresh inference.  Otherwise allocation
+   * failures would be masked by two subsequent cached-success frames. */
+  g_frame_counter++;
   return 0;
 }

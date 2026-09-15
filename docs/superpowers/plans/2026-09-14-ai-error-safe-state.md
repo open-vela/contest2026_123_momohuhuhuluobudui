@@ -10,6 +10,47 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-14-ai-error-safe-state-design.md`
 
+## Execution Adjustments (2026-09-15)
+
+- Tasks 1-3 are implemented and host-verified in commits `4b3f2a0`,
+  `0b68a0f`, and `e67b45a`.
+- Task 4's proposed static source integration test was replaced by real runtime
+  tests of `ag_vision_health_gate()`. Main calls this gate to clear all
+  untrusted results. Tests cover failed data, the first recovery success, and
+  successful recovery while preserving faces; actual main-loop wiring was
+  independently reviewed and target-compiled rather than claiming a source
+  string check proves runtime integration.
+- Review reproduced invalid ACK followed by immediate renewed sedentary alert.
+  A failing core regression preceded the `vision_ack_pending` correction.
+- The adapter now leaves its three-frame schedule on a fresh-inference slot
+  after failure, preventing two cached-success frames from masking the fault.
+- A clean target worktree build exposed the missing official
+  `dl_image_bmp.hpp` dependency. The unchanged header was copied from the
+  original checkout, verified with `cmp`, and added to submission sources.
+- Independent re-review found no remaining Critical/Important code issues;
+  physical smoke evidence remains a separate completion gate.
+- The next target link exposed the missing official ESP32-S3
+  `libfbs_model.a`. The unchanged original archive is now tracked with an
+  exact `.gitignore` exception; SHA256 is
+  `d0250350c897f2c5243066ae1c9eb337fb926515c9553a8a422a4fe5d6d82020`.
+- Switching source paths left both original and worktree object members in
+  NuttX's incremental `libapps.a`. The first successful link still selected
+  old code and is explicitly rejected as integration evidence. After backing
+  up that archive to `/tmp/agentguard-archive-backup.pxZIGJ/libapps.a`, only
+  the 102 original AgentGuard object members were removed and the image was
+  relinked. `nm` confirms `ag_vision_health_init`, `ag_vision_health_update`,
+  and `ag_vision_health_gate` are present in the final ELF.
+- Software verification: 27 host C/C++ executables and 4 Python checks pass;
+  target build exits zero; `git diff --check` passes. Image size is 2,414,644
+  bytes (below 3,145,728); SHA256 is
+  `3bd26040177ef44a74226e5176e0441a194aa2834afe5a727b954b0dcedaf481`.
+  The application source link has been restored to the original checkout.
+- Tasks 1-4 and Task 5 review steps are software-complete under the adjustments
+  above. Flash, normal-path physical smoke, and hardware fault/recovery smoke
+  are not complete: `/dev/ttyACM0` is currently unavailable. No flash or erase
+  was performed. The original detailed checkboxes below are historical plan
+  instructions, not evidence overriding this execution record.
+
 ## Global Constraints
 
 - Enter AI error after exactly 3 consecutive failed inference attempts.

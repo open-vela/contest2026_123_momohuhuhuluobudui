@@ -9,6 +9,18 @@ void ag_vision_health_init(struct ag_vision_health_state *state)
   memset(state, 0, sizeof(*state));
 }
 
+bool ag_vision_health_gate(const struct ag_vision_health_state *state,
+                           bool inference_ok, struct ag_vision_result *result)
+{
+  if (!inference_ok || state->error_active)
+    {
+      memset(result, 0, sizeof(*result));
+      return false;
+    }
+
+  return true;
+}
+
 enum ag_vision_health_transition ag_vision_health_update(
   struct ag_vision_health_state *state, bool inference_ok)
 {

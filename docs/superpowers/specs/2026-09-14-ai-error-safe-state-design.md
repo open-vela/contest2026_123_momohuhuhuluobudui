@@ -68,6 +68,11 @@ The timestamps shifted are `presence_since_ms`, `absence_since_ms`,
 `poor_posture_since_ms`, and `awaiting_ack_since_ms`. Zero continues to mean
 inactive. `vision_paused_since_ms` is then cleared.
 
+Acknowledgement during an invalid interval uses the last trustworthy
+`state.present`, not invalid face data, to record a pending sitting reset.
+The reset is applied at the first valid observation after recovery, so the
+acknowledgement cannot be negated by an immediate renewed sedentary alert.
+
 ### Events and persistent evidence
 
 Two event bits are added to the existing core event vocabulary:
@@ -112,6 +117,11 @@ For each captured frame:
 
 On error entry, reset the face-presence hold state. This prevents pre-error
 boxes and counts from being reused after a prolonged failure.
+
+The adapter's three-frame inference schedule advances only after a successful
+fresh inference or a legitimate cache reuse. A failed fresh attempt leaves the
+schedule on a fresh-inference slot, so subsequent old cached results cannot
+mask repeated failures. Official ESP-DL algorithm/model files are unchanged.
 
 ## Failure Handling
 
