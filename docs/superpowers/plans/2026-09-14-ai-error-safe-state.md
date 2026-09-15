@@ -89,6 +89,24 @@ review. Image size: 2,414,468 bytes; SHA256:
 `0e35f0064d6c2f3a5b08fc71fb07aa437e8cf2fc068fa07348652348b10694cf`.
 BOOT input and visible two-second expiry still need physical verification.
 
+The user subsequently reported that BOOT did not clear SIT. Inspection
+confirmed `ag_run()` directly opened `/dev/buttons`, while the normal board
+bringup that registers it is skipped by the direct application entrypoint
+(`CONFIG_BOARD_LATE_INITIALIZE` is not enabled). The approved correction
+reuses an existing device, or on ENOENT calls `btn_lower_initialize()` and
+reopens it. Other open failures and negative registration errors remain
+failures; UI displays `SIT:mm:ss BTN:ERR` if no button FD is available.
+The detector and pin definitions are unchanged. The transient FACE:0
+reported around the press has not been attributed to any cause.
+
+New runtime tests exercise real temporary paths for missing-device
+registration, registration failure, and existing-device reuse; the UI test
+covers visible failure status. Full host suite (28 C/C++ executables and
+4 Python checks) and target build pass. Image size: 2,414,484 bytes; SHA256:
+`7fbc439ef18e168042d040bf7bc1d5fd1699f4f1d62807b434e69b60af1dd272`.
+At this checkpoint the USB board is disconnected, so this correction is
+not flashed and its BOOT behavior is not physically verified.
+
 ### Original AI Safe-State Constraints
 
 - Enter AI error after exactly 3 consecutive failed inference attempts.

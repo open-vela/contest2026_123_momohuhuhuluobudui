@@ -58,6 +58,7 @@ struct ag_ui_status
   bool camera_stale;
   bool ai_error;
   bool acknowledged;
+  bool button_unavailable;
 };
 
 void ag_ui_format_face_count(char *buffer, size_t buffer_size,

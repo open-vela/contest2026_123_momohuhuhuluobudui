@@ -3,6 +3,7 @@
 #include <nuttx/config.h>
 
 #include "agentguard/core.h"
+#include "agentguard/button_device.h"
 #include "agentguard/display_preview.h"
 #include "agentguard/display_regions.h"
 #include "agentguard/display_ui.h"
@@ -1221,7 +1222,7 @@ static int ag_run(void)
   g_agentguard_camera_irq_count = 0;
 
   led_fd = open(AG_LED_PATH, O_WRONLY);
-  button_fd = open(AG_BUTTON_PATH, O_RDONLY | O_NONBLOCK);
+  button_fd = ag_button_open_device(AG_BUTTON_PATH, btn_lower_initialize);
   ag_vision_init(&vision);
   ag_vision_health_init(&vision_health);
   ag_face_presence_reset(&face_presence);
@@ -1307,6 +1308,7 @@ static int ag_run(void)
           ui_status.frame_sequence = ++frame_sequence;
           ui_status.acknowledged =
             observation.monotonic_ms < acknowledged_until_ms;
+          ui_status.button_unavailable = button_fd < 0;
           ui_status.camera_phase = 7;
           ui_status.face_count = vision_result.face_count;
           ui_status.posture_score = vision_result.posture_score;
@@ -1387,6 +1389,7 @@ static int ag_run(void)
               memset(&vision_result, 0, sizeof(vision_result));
               memset(&ui_status, 0, sizeof(ui_status));
               ui_status.ai_error = true;
+              ui_status.button_unavailable = button_fd < 0;
               ui_status.frame_sequence = ++frame_sequence;
               ui_status.camera_phase = 7;
               ui_status.frame_timing_valid = frame_timing.valid;
