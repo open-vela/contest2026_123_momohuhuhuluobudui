@@ -46,10 +46,30 @@
   `3bd26040177ef44a74226e5176e0441a194aa2834afe5a727b954b0dcedaf481`.
   The application source link has been restored to the original checkout.
 - Tasks 1-4 and Task 5 review steps are software-complete under the adjustments
-  above. Flash, normal-path physical smoke, and hardware fault/recovery smoke
-  are not complete: `/dev/ttyACM0` is currently unavailable. No flash or erase
-  was performed. The original detailed checkboxes below are historical plan
+  above. The original detailed checkboxes below are historical plan
   instructions, not evidence overriding this execution record.
+
+### Hardware Verification Update (2026-09-15)
+
+- Commit `16830d6` image was flashed at `0x0` with esptool. The image hash was
+  checked before flashing and esptool reported `Hash of data verified`.
+  Only the application image was written; no erase-flash or LittleFS write
+  was performed. Flash output is in `/tmp/agentguard-ai-error-flash.log`.
+- Serial capture did not obtain an NSH prompt. JTAG PC samples mapped to
+  ESP-DL convolution routines, showing execution had passed early boot;
+  subsequent read-only cache sampling was blocked by USB transport timeouts.
+  The temporary debug service was closed and CPU execution resumed.
+- After reconnecting USB, the user confirmed a live camera preview and
+  `FACE:0` in an empty scene. The user then confirmed a stable single-face
+  test (requested duration approximately 15 seconds, `FACE:1`, one box, no
+  `AI ERROR`) and confirmed return to `FACE:0` with boxes cleared after the
+  face was removed. These are user-observed UI results, not instrumented
+  frame-by-frame measurements.
+- Remaining hardware checks: two-face regression on this image, retained
+  event-log readability, and AI failure/recovery behavior. The normal UI
+  tests above do not establish that the error path has been exercised.
+- Latest implementation commits are locally retained; push attempts failed
+  because SSH transport closed and HTTPS had no available login credentials.
 
 ## Global Constraints
 
