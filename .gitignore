@@ -3,6 +3,7 @@ build/
 out/
 *.o
 *.a
+!app/agentguard/third_party/esp-dl/fbs_loader/lib/esp32s3/libfbs_model.a
 *.elf
 *.hex
 *.map
