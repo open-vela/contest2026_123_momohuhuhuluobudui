@@ -107,6 +107,18 @@ covers visible failure status. Full host suite (28 C/C++ executables and
 At this checkpoint the USB board is disconnected, so this correction is
 not flashed and its BOOT behavior is not physically verified.
 
+### BOOT Verification Update (2026-09-16)
+
+The `c9f79ef` image was flashed after reconnecting the ESP32-S3-EYE; esptool
+reported `Hash of data verified`. The user confirmed BOOT displays
+`ACKNOWLEDGED`, resets SIT, and normal monitoring resumes. The first observed
+press appeared to pause refresh for roughly one to two seconds, but a later
+run was reported fully normal and the symptom could not be reproduced. Code
+inspection confirms acknowledgement events are not posted over HTTP; they do
+append to the behavior log and the first event after boot can run synchronous
+log compaction. No speculative performance change was made without a
+repeatable failure. The BOOT registration fix is physically verified.
+
 ### Original AI Safe-State Constraints
 
 - Enter AI error after exactly 3 consecutive failed inference attempts.
