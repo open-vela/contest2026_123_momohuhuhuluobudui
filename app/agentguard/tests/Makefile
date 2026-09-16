@@ -30,8 +30,7 @@ test_button_gesture: test_button_gesture.c $(ROOT)/src/button_gesture.c \
 
 test_serial_event: test_serial_event.c $(ROOT)/src/serial_event.c \
   $(ROOT)/include/agentguard/serial_event.h
-	$(CC) $(CFLAGS) -I$(ROOT)/include test_serial_event.c \
-		$(ROOT)/src/serial_event.c -pthread -o $@
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_serial_event.c $(ROOT)/src/serial_event.c -o $@
 
 test_core: test_core.c $(ROOT)/src/core.c $(ROOT)/include/agentguard/core.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_core.c $(ROOT)/src/core.c -o $@
