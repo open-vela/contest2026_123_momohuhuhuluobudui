@@ -4,6 +4,7 @@
 
 #include "agentguard/core.h"
 #include "agentguard/button_device.h"
+#include "agentguard/button_gesture.h"
 #include "agentguard/display_preview.h"
 #include "agentguard/display_regions.h"
 #include "agentguard/display_ui.h"
@@ -1046,29 +1047,16 @@ static void ag_set_led(int led_fd, bool enabled)
     }
 }
 
-static enum ag_command ag_read_button(int button_fd, bool *was_pressed)
+static bool ag_read_button(int button_fd, bool *pressed)
 {
   btn_buttonset_t sample = 0;
-  bool pressed;
 
   if (button_fd < 0 || read(button_fd, &sample, sizeof(sample)) <= 0)
     {
-      return AG_COMMAND_NONE;
+      return false;
     }
-
-  pressed = sample != 0;
-  if (pressed && !*was_pressed)
-    {
-      *was_pressed = true;
-      return AG_COMMAND_ACKNOWLEDGE;
-    }
-
-  if (!pressed)
-    {
-      *was_pressed = false;
-    }
-
-  return AG_COMMAND_NONE;
+  *pressed = sample != 0;
+  return true;
 }
 
 static void ag_dispatch_events(uint32_t events, uint64_t now,
@@ -1133,11 +1121,14 @@ static int ag_run(void)
   struct ag_camera_watchdog watchdog;
   struct ag_display_worker display_worker;
   struct ag_frame_timing_state frame_timing;
+  struct ag_button_gesture button_gesture;
   struct v4l2_buffer frame;
   pthread_t watchdog_thread;
   uint64_t dequeue_started_ms;
   uint64_t dequeue_finished_ms;
-  bool was_pressed = false;
+  enum ag_button_gesture_event button_event;
+  bool button_pressed;
+  bool demo_mode = false;
   bool inference_ok;
   bool inference_trusted;
   uint64_t acknowledged_until_ms = 0;
@@ -1229,6 +1220,7 @@ static int ag_run(void)
   ag_default_config(&config);
   ag_init(&state);
   ag_frame_timing_reset(&frame_timing);
+  ag_button_gesture_init(&button_gesture);
 
   for (;;)
     {
@@ -1274,7 +1266,24 @@ static int ag_run(void)
       inference_trusted = ag_vision_health_gate(&vision_health, inference_ok,
                                                &vision_result);
       observation.monotonic_ms = ag_now_ms();
-      observation.command = ag_read_button(button_fd, &was_pressed);
+      observation.command = AG_COMMAND_NONE;
+      button_event = AG_BUTTON_GESTURE_NONE;
+      if (ag_read_button(button_fd, &button_pressed))
+        {
+          button_event = ag_button_gesture_update(
+            &button_gesture, button_pressed, observation.monotonic_ms);
+        }
+      if (button_event == AG_BUTTON_GESTURE_ACK)
+        {
+          observation.command = AG_COMMAND_ACKNOWLEDGE;
+        }
+      else if (button_event == AG_BUTTON_GESTURE_TOGGLE_DEMO)
+        {
+          demo_mode = !demo_mode;
+          ag_set_demo_mode(&state, &config, demo_mode,
+                           observation.monotonic_ms);
+          ag_set_led(led_fd, ag_attention_led_enabled(&state));
+        }
       if (observation.command == AG_COMMAND_ACKNOWLEDGE)
         {
           acknowledged_until_ms = observation.monotonic_ms + 2000;
@@ -1309,6 +1318,7 @@ static int ag_run(void)
           ui_status.acknowledged =
             observation.monotonic_ms < acknowledged_until_ms;
           ui_status.button_unavailable = button_fd < 0;
+          ui_status.demo_mode = demo_mode;
           ui_status.camera_phase = 7;
           ui_status.face_count = vision_result.face_count;
           ui_status.posture_score = vision_result.posture_score;
@@ -1390,6 +1400,7 @@ static int ag_run(void)
               memset(&ui_status, 0, sizeof(ui_status));
               ui_status.ai_error = true;
               ui_status.button_unavailable = button_fd < 0;
+              ui_status.demo_mode = demo_mode;
               ui_status.frame_sequence = ++frame_sequence;
               ui_status.camera_phase = 7;
               ui_status.frame_timing_valid = frame_timing.valid;

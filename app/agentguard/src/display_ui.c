@@ -716,6 +716,11 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
       snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu BTN:ERR",
                minutes, seconds);
     }
+  else if (status->demo_mode)
+    {
+      snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu DEMO",
+               minutes, seconds);
+    }
   else
     {
       snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu FRM:%05lu",

@@ -199,6 +199,41 @@ static void test_phrases_and_json(void)
   assert(strstr(output, "posture_alert") != NULL);
 }
 
+static void test_demo_mode_resets_interval_and_restores_defaults(void)
+{
+  struct ag_state state;
+  struct ag_config config;
+  ag_init(&state);
+  ag_default_config(&config);
+  step(&state, &config, 100, 1, 0, AG_COMMAND_NONE, true);
+  ag_set_demo_mode(&state, &config, true, 500);
+  assert(config.sedentary_ms == 20000);
+  assert(config.reminder_grace_ms == 10000);
+  assert(state.presence_since_ms == 500);
+  assert(!ag_attention_led_enabled(&state));
+  state.posture_alerted = true;
+  assert(ag_attention_led_enabled(&state));
+  assert(!(step(&state, &config, 20499, 1, 0, AG_COMMAND_NONE, true) & AG_EVENT_SEDENTARY_ALERT));
+  assert(step(&state, &config, 20500, 1, 0, AG_COMMAND_NONE, true) & AG_EVENT_SEDENTARY_ALERT);
+  ag_set_demo_mode(&state, &config, false, 21000);
+  assert(config.sedentary_ms == 30ull * 60ull * 1000ull);
+  assert(config.reminder_grace_ms == 60ull * 1000ull);
+  assert(state.presence_since_ms == 21000);
+}
+
+static void test_demo_toggle_during_invalid_vision_restarts_on_recovery(void)
+{
+  struct ag_state state;
+  struct ag_config config;
+  ag_init(&state);
+  ag_default_config(&config);
+  step(&state, &config, 100, 1, 0, AG_COMMAND_NONE, true);
+  step(&state, &config, 200, 0, 0, AG_COMMAND_NONE, false);
+  ag_set_demo_mode(&state, &config, true, 500);
+  step(&state, &config, 1000, 1, 0, AG_COMMAND_NONE, true);
+  assert(state.presence_since_ms == 1000);
+}
+
 int main(void)
 {
   test_sedentary_and_lock();
@@ -210,6 +245,8 @@ int main(void)
   test_ack_during_invalid_vision_starts_fresh_interval();
   test_all_active_timers_shift_safely();
   test_phrases_and_json();
+  test_demo_mode_resets_interval_and_restores_defaults();
+  test_demo_toggle_during_invalid_vision_restarts_on_recovery();
   puts("AgentGuard core tests: PASS");
   return 0;
 }

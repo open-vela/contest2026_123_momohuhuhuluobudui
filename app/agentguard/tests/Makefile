@@ -4,7 +4,7 @@ CFLAGS ?= -std=c11 -Wall -Wextra -Werror -pedantic -O2
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 
 ROOT := ..
-TARGETS := test_button_device test_core test_vision test_vision_health test_diagnostic_fingerprint \
+TARGETS := test_button_device test_button_gesture test_core test_vision test_vision_health test_diagnostic_fingerprint \
 	test_face_diagnostics test_face_fallback test_face_presence \
 	test_face_authority_heuristic test_face_authority_espdl \
 	test_storage test_display_ui \
@@ -23,6 +23,10 @@ all: $(TARGETS)
 test_button_device: test_button_device.c $(ROOT)/src/button_device.c \
   $(ROOT)/include/agentguard/button_device.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_button_device.c $(ROOT)/src/button_device.c -o $@
+
+test_button_gesture: test_button_gesture.c $(ROOT)/src/button_gesture.c \
+  $(ROOT)/include/agentguard/button_gesture.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_button_gesture.c $(ROOT)/src/button_gesture.c -o $@
 
 test_core: test_core.c $(ROOT)/src/core.c $(ROOT)/include/agentguard/core.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_core.c $(ROOT)/src/core.c -o $@
@@ -189,6 +193,7 @@ test_espdl_tie_selftest: test_espdl_tie_selftest.cpp \
 
 test: $(TARGETS)
 	./test_button_device
+	./test_button_gesture
 	./test_core
 	./test_vision
 	./test_vision_health

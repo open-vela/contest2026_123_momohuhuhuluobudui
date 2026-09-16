@@ -45,6 +45,34 @@ void ag_init(struct ag_state *state)
   memset(state, 0, sizeof(*state));
 }
 
+void ag_set_demo_mode(struct ag_state *state, struct ag_config *config,
+                      bool enabled, uint64_t now_ms)
+{
+  ag_default_config(config);
+  if (enabled)
+    {
+      config->sedentary_ms = 20ull * 1000ull;
+      config->reminder_grace_ms = 10ull * 1000ull;
+    }
+  if (state->present)
+    {
+      /* Recovery shifts active timestamps by the whole invalid interval.
+       * Anchor at its start so the shifted timer begins at recovery. */
+      state->presence_since_ms = state->vision_paused ?
+        state->vision_paused_since_ms : now_ms;
+    }
+  state->sedentary_alerted = false;
+  state->awaiting_ack = false;
+  state->awaiting_ack_since_ms = 0;
+  state->lock_sent = false;
+}
+
+bool ag_attention_led_enabled(const struct ag_state *state)
+{
+  return state->sedentary_alerted || state->posture_alerted ||
+    state->privacy_blurred || state->lock_sent;
+}
+
 static uint32_t ag_apply_command(struct ag_state *state,
                                  enum ag_command command)
 {

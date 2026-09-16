@@ -280,6 +280,11 @@ int main(void)
     assert(memcmp(timer_row, &frame[(HEIGHT - 34 + 19) * WIDTH],
                   sizeof(timer_row)) != 0);
     status.button_unavailable = false;
+    status.demo_mode = true;
+    ag_ui_render_rgb565(frame, WIDTH, HEIGHT, VIEW_WIDTH, HEIGHT, &status);
+    assert(memcmp(timer_row, &frame[(HEIGHT - 34 + 19) * WIDTH],
+                  sizeof(timer_row)) != 0);
+    status.demo_mode = false;
   }
   status.acknowledged = true;
   {

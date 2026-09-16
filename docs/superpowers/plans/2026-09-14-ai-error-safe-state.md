@@ -119,6 +119,27 @@ append to the behavior log and the first event after boot can run synchronous
 log compaction. No speculative performance change was made without a
 repeatable failure. The BOOT registration fix is physically verified.
 
+### Approved Demo Mode (2026-09-16)
+
+To make the existing 30-minute reminder demonstrable before submission, the
+user approved a reversible on-device demo mode. A short BOOT press emits ACK
+on release. Holding BOOT for at least 3 seconds toggles demo mode once; the
+release path also checks elapsed time so a slow ESP-DL frame cannot misclassify
+an unsampled long hold as ACK. The footer shows `DEMO` (`BTN:ERR` remains
+higher priority). Demo mode uses a 20-second sedentary threshold and 10-second
+acknowledgement grace; disabling it restores 30 minutes and 60 seconds.
+
+Each toggle starts a fresh trusted sitting interval, clears stale sedentary,
+awaiting-ack, and lock state, and synchronizes the LED while preserving active
+posture/privacy attention. A toggle during AI ERROR anchors at the invalid
+interval start so recovery begins a fresh timer without double shifting.
+Pure gesture/core/UI tests cover these boundaries. Full host suite passes;
+target build contains `ag_button_gesture_update`, `ag_set_demo_mode`, and
+`ag_attention_led_enabled`. Independent review found no remaining
+Critical/Important issues. Final image: 2,414,516 bytes, SHA256
+`2e9ce2765f8e818fedfb28319897be0c29e9fb80baa97ec55d0e5ef4dc94fb75`.
+Physical demo-mode verification remains pending.
+
 ### Original AI Safe-State Constraints
 
 - Enter AI error after exactly 3 consecutive failed inference attempts.

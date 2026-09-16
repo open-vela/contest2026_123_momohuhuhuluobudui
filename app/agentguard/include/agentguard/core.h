@@ -86,6 +86,9 @@ struct ag_state
 };
 
 void ag_default_config(struct ag_config *config);
+void ag_set_demo_mode(struct ag_state *state, struct ag_config *config,
+                      bool enabled, uint64_t now_ms);
+bool ag_attention_led_enabled(const struct ag_state *state);
 void ag_init(struct ag_state *state);
 uint32_t ag_step(struct ag_state *state, const struct ag_config *config,
                  const struct ag_observation *observation);

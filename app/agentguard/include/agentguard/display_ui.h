@@ -59,6 +59,7 @@ struct ag_ui_status
   bool ai_error;
   bool acknowledged;
   bool button_unavailable;
+  bool demo_mode;
 };
 
 void ag_ui_format_face_count(char *buffer, size_t buffer_size,
