@@ -22,7 +22,11 @@ Keep this process running, enable `DEMO` with a three-second BOOT hold, and
 remain in view for 20 seconds. A `sedentary_alert` produces a desktop
 notification and one JSONL record. Serial input accepts only lines beginning
 with `AGENTGUARD_EVENT ` and only the same five allowlisted actions as HTTP.
-Opening the port uses the Python standard library and does not toggle DTR/RTS.
+The device sends these records on a best-effort, non-blocking basis so a busy
+console can never stall camera inference. The Linux notification is marked
+critical and remains visible for 10 seconds. Opening the port uses the Python
+standard library and does not issue explicit DTR/RTS control operations;
+USB passthrough environments can still briefly re-enumerate the device.
 
 Screen locking is intentionally disabled unless `--allow-lock` is passed.
 Use `--log PATH` to select the received JSONL event log.

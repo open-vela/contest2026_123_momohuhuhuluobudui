@@ -199,7 +199,8 @@ class ActionDispatcher:
         elif system == "Windows":
             LOGGER.info("%s: %s", title, message)
         else:
-            self.runner(["notify-send", title, message], check=False)
+            self.runner(["notify-send", "--urgency=critical",
+                         "--expire-time=10000", title, message], check=False)
 
     def _lock_screen(self) -> None:
         system = platform.system()

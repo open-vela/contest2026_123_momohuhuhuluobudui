@@ -82,6 +82,10 @@ class AgentGuardServerTest(unittest.TestCase):
         self.assertEqual(parse_serial_event(line)["event"], "sedentary_alert")
         self.assertTrue(dispatch_serial_line(line, dispatcher, path))
         self.assertIn("sedentary_alert", path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            self.commands[-1],
+            ["notify-send", "--urgency=critical", "--expire-time=10000",
+             "AgentGuard 久坐提醒", "请起身活动并让肩颈放松"])
         self.assertFalse(dispatch_serial_line("noise", dispatcher, path))
         self.assertFalse(dispatch_serial_line(
             'AGENTGUARD_EVENT {"event":"unknown"}', dispatcher, path))

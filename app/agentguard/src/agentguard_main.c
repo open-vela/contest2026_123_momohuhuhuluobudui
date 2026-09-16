@@ -1098,7 +1098,8 @@ static void ag_dispatch_events(uint32_t events, uint64_t now,
           event == AG_EVENT_UNBLUR_SCREEN ||
           event == AG_EVENT_LOCK_SCREEN)
         {
-          (void)ag_serial_event_try_write(AG_SERIAL_EVENT_PATH, json);
+          (void)ag_serial_event_try_write(AG_SERIAL_EVENT_PATH,
+                                          ag_event_name(event));
           ag_post_event(json);
         }
     }

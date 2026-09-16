@@ -5,21 +5,23 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#define AG_SERIAL_EVENT_RECORD_SIZE 320
+#define AG_SERIAL_EVENT_RECORD_SIZE 64
 
-int ag_serial_event_format(char *buffer, size_t size, const char *json)
+int ag_serial_event_format(char *buffer, size_t size,
+                           const char *event_name)
 {
   int length;
-  if (buffer == NULL || size == 0 || json == NULL)
+  if (buffer == NULL || size == 0 || event_name == NULL)
     {
       return -1;
     }
 
-  length = snprintf(buffer, size, "AGENTGUARD_EVENT %s\n", json);
+  length = snprintf(buffer, size, "AGENTGUARD_EVENT {\"event\":\"%s\"}\n",
+                    event_name);
   return length > 0 && (size_t)length < size ? length : -1;
 }
 
-int ag_serial_event_try_write(const char *path, const char *json)
+int ag_serial_event_try_write(const char *path, const char *event_name)
 {
   char record[AG_SERIAL_EVENT_RECORD_SIZE];
   ssize_t written;
@@ -31,7 +33,7 @@ int ag_serial_event_try_write(const char *path, const char *json)
       return -1;
     }
 
-  length = ag_serial_event_format(record, sizeof(record), json);
+  length = ag_serial_event_format(record, sizeof(record), event_name);
   if (length < 0)
     {
       return -1;
