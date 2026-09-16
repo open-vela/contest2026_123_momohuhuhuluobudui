@@ -270,7 +270,7 @@ def make_handler(token: str, dispatcher: ActionDispatcher, log_path: Path):
     return AgentGuardHandler
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8080)
@@ -279,19 +279,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log", type=Path,
                         default=Path("agentguard-events.jsonl"))
     parser.add_argument("--serial", help="USB serial device, e.g. /dev/ttyACM0")
-    return parser.parse_args()
+    parser.add_argument("--no-http", action="store_true",
+                        help="run only the USB serial listener")
+    args = parser.parse_args(argv)
+    if args.no_http and not args.serial:
+        parser.error("--no-http requires --serial")
+    return args
 
 
 def main() -> int:
     args = parse_args()
     token = os.environ.get("AGENTGUARD_TOKEN", "")
-    if len(token) < 16:
+    if not args.no_http and len(token) < 16:
         raise SystemExit("set AGENTGUARD_TOKEN to a random value of 16+ characters")
     if args.host not in {"127.0.0.1", "::1", "localhost"} and not args.allow_lan:
         raise SystemExit("non-loopback binding requires --allow-lan")
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     dispatcher = ActionDispatcher(allow_lock=args.allow_lock)
+    if args.no_http:
+        LOGGER.info("USB-only mode; HTTP server disabled")
+        try:
+            serial_event_loop(args.serial, dispatcher, args.log)
+        except KeyboardInterrupt:
+            LOGGER.info("USB listener stopped")
+        return 0
     if args.serial:
         threading.Thread(target=serial_event_loop,
                          args=(args.serial, dispatcher, args.log),

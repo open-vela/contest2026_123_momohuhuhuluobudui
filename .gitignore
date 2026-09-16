@@ -9,6 +9,7 @@ out/
 *.map
 *.pyc
 __pycache__/
+/monitor/*.jsonl
 
 # NuttX application dependency markers generated in the source link
 /app/agentguard/.built

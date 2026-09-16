@@ -9,13 +9,27 @@ export AGENTGUARD_TOKEN='a-random-value-with-at-least-16-characters'
 python3 agentguard_pc.py --host 0.0.0.0 --allow-lan
 ```
 
-For the submission demo, USB serial avoids Wi-Fi setup. It retains the local
-HTTP health endpoint while consuming framed device events from the cable:
+For the submission demo, USB serial avoids Wi-Fi setup:
+
+```bash
+cd monitor
+python3 run_usb.py
+```
+
+The launcher finds `agentguard_pc.py` relative to itself, generates a temporary
+local token when `AGENTGUARD_TOKEN` is unset, and stores events in
+`~/.local/state/agentguard/events.jsonl` (or `$XDG_STATE_HOME/agentguard`). Use
+`python3 run_usb.py --serial /dev/ttyACM1` for a different device. If the device
+is temporarily absent, leave the launcher running: it waits and reconnects
+automatically. It uses USB-only mode, so an occupied HTTP port cannot stop the
+demo. Press Ctrl+C to stop it.
+
+The equivalent manual command remains available when custom HTTP options are
+needed:
 
 ```bash
 export AGENTGUARD_TOKEN='a-random-value-with-at-least-16-characters'
-python3 agentguard_pc.py --serial /dev/ttyACM0 \
-  --log agentguard-usb-events.jsonl
+python3 agentguard_pc.py --serial /dev/ttyACM0 --log /tmp/events.jsonl
 ```
 
 Keep this process running, enable `DEMO` with a three-second BOOT hold, and
@@ -34,7 +48,7 @@ Use `--log PATH` to select the received JSONL event log.
 Run tests with:
 
 ```bash
-python3 -m unittest -v test_agentguard_pc.py
+python3 -m unittest -v test_agentguard_pc.py test_run_usb.py
 ```
 
 The old `sit_reminder_monitor.py` is retained as an early prototype and should

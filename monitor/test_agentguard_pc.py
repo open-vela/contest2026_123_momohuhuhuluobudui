@@ -1,14 +1,19 @@
 import http.client
 import json
+import select
+import signal
+import subprocess
+import sys
 import tempfile
 import threading
+import time
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from agentguard_pc import (ActionDispatcher, SerialFrameDecoder,
                            dispatch_serial_line, make_handler,
-                           parse_serial_event)
+                           parse_args, parse_serial_event)
 
 
 class FakeShield:
@@ -106,6 +111,55 @@ class AgentGuardServerTest(unittest.TestCase):
         deep_json = "[" * 1200 + "]" * 1200
         self.assertIsNone(parse_serial_event(
             "AGENTGUARD_EVENT " + deep_json))
+
+
+class AgentGuardArgumentTest(unittest.TestCase):
+    def test_no_http_mode_is_available_for_usb_only_demo(self):
+        args = parse_args(["--no-http", "--serial", "/dev/ttyACM7"])
+
+        self.assertTrue(args.no_http)
+        self.assertEqual(args.serial, "/dev/ttyACM7")
+
+    def test_no_http_mode_exits_cleanly_on_ctrl_c(self):
+        with tempfile.TemporaryDirectory() as directory:
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(Path(__file__).with_name("agentguard_pc.py")),
+                    "--no-http",
+                    "--serial",
+                    str(Path(directory) / "missing-device"),
+                    "--log",
+                    str(Path(directory) / "events.jsonl"),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            stderr_lines = []
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                readable, _, _ = select.select(
+                    [process.stderr], [], [], deadline - time.monotonic())
+                if not readable:
+                    break
+                line = process.stderr.readline()
+                stderr_lines.append(line)
+                if "serial unavailable" in line:
+                    break
+
+            ready = any("serial unavailable" in line
+                        for line in stderr_lines)
+            if ready:
+                process.send_signal(signal.SIGINT)
+            else:
+                process.terminate()
+            _, remaining_stderr = process.communicate(timeout=2)
+            stderr = "".join(stderr_lines) + remaining_stderr
+
+        self.assertTrue(ready, stderr)
+        self.assertEqual(process.returncode, 0, stderr)
+        self.assertNotIn("Traceback", stderr)
 
 
 if __name__ == "__main__":
