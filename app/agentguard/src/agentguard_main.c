@@ -1062,7 +1062,8 @@ static bool ag_read_button(int button_fd, bool *pressed)
 }
 
 static void ag_dispatch_events(uint32_t events, uint64_t now,
-                               const struct ag_state *state, int led_fd)
+                               const struct ag_state *state, int led_fd,
+                               struct ag_serial_event_sender *serial_sender)
 {
   unsigned int bit;
   char json[256];
@@ -1098,7 +1099,8 @@ static void ag_dispatch_events(uint32_t events, uint64_t now,
           event == AG_EVENT_UNBLUR_SCREEN ||
           event == AG_EVENT_LOCK_SCREEN)
         {
-          (void)ag_serial_event_try_write(AG_SERIAL_EVENT_PATH, json);
+          (void)ag_serial_event_sender_submit(serial_sender,
+                                              ag_event_name(event));
           ag_post_event(json);
         }
     }
@@ -1125,6 +1127,7 @@ static int ag_run(void)
   struct ag_display_worker display_worker;
   struct ag_frame_timing_state frame_timing;
   struct ag_button_gesture button_gesture;
+  struct ag_serial_event_sender serial_sender;
   struct v4l2_buffer frame;
   pthread_t watchdog_thread;
   uint64_t dequeue_started_ms;
@@ -1224,6 +1227,11 @@ static int ag_run(void)
   ag_init(&state);
   ag_frame_timing_reset(&frame_timing);
   ag_button_gesture_init(&button_gesture);
+  if (ag_serial_event_sender_start(&serial_sender,
+                                   AG_SERIAL_EVENT_PATH) < 0)
+    {
+      fprintf(stderr, "agentguard: USB event sender unavailable\n");
+    }
 
   for (;;)
     {
@@ -1297,12 +1305,13 @@ static int ag_run(void)
         {
           ag_face_presence_reset(&face_presence);
           ag_dispatch_events(AG_EVENT_AI_ERROR, observation.monotonic_ms,
-                             &state, led_fd);
+                             &state, led_fd, &serial_sender);
         }
       else if (health_transition == AG_VISION_HEALTH_RECOVERED)
         {
           ag_dispatch_events(AG_EVENT_AI_RECOVERED,
-                             observation.monotonic_ms, &state, led_fd);
+                             observation.monotonic_ms, &state, led_fd,
+                             &serial_sender);
         }
 
       if (inference_trusted)
@@ -1315,7 +1324,8 @@ static int ag_run(void)
           observation.face_count = vision_result.face_count;
           observation.posture_score = vision_result.posture_score;
           ag_dispatch_events(ag_step(&state, &config, &observation),
-                             observation.monotonic_ms, &state, led_fd);
+                             observation.monotonic_ms, &state, led_fd,
+                             &serial_sender);
           memset(&ui_status, 0, sizeof(ui_status));
           ui_status.frame_sequence = ++frame_sequence;
           ui_status.acknowledged =
@@ -1392,7 +1402,8 @@ static int ag_run(void)
           observation.face_count = 0;
           observation.posture_score = 0;
           ag_dispatch_events(ag_step(&state, &config, &observation),
-                             observation.monotonic_ms, &state, led_fd);
+                             observation.monotonic_ms, &state, led_fd,
+                             &serial_sender);
 
           if (vision_health.error_active)
             {
@@ -1435,6 +1446,7 @@ static int ag_run(void)
     }
 
   ag_set_led(led_fd, false);
+  ag_serial_event_sender_stop(&serial_sender);
   if (button_fd >= 0) close(button_fd);
   if (led_fd >= 0) close(led_fd);
   ag_display_close(&display);
