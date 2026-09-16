@@ -18,6 +18,7 @@
 #include "agentguard/thread_priority.h"
 #include "agentguard/vision.h"
 #include "agentguard/vision_health.h"
+#include "agentguard/serial_event.h"
 #ifdef CONFIG_AGENTGUARD_ESP_DL
 #  include "agentguard/espdl_tie_selftest.h"
 #  include "agentguard/vision_model.h"
@@ -77,6 +78,7 @@ extern int board_i2c_init(void);
 #endif
 
 #define AG_CAMERA_PATH "/dev/video0"
+#define AG_SERIAL_EVENT_PATH "/dev/console"
 #define AG_LCD_PATH "/dev/lcd0"
 #define AG_LED_PATH "/dev/userleds"
 #define AG_BUTTON_PATH "/dev/buttons"
@@ -1096,6 +1098,7 @@ static void ag_dispatch_events(uint32_t events, uint64_t now,
           event == AG_EVENT_UNBLUR_SCREEN ||
           event == AG_EVENT_LOCK_SCREEN)
         {
+          (void)ag_serial_event_try_write(AG_SERIAL_EVENT_PATH, json);
           ag_post_event(json);
         }
     }

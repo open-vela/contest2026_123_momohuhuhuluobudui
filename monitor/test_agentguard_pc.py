@@ -6,7 +6,9 @@ import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-from agentguard_pc import ActionDispatcher, make_handler
+from agentguard_pc import (ActionDispatcher, SerialFrameDecoder,
+                           dispatch_serial_line, make_handler,
+                           parse_serial_event)
 
 
 class FakeShield:
@@ -71,6 +73,35 @@ class AgentGuardServerTest(unittest.TestCase):
 
     def test_rejects_unknown_event(self):
         self.assertEqual(self.request("run_arbitrary_command")[0], 422)
+
+    def test_serial_event_dispatches_and_logs(self):
+        path = Path(self.tempdir.name) / "serial.jsonl"
+        dispatcher = ActionDispatcher(False, self.shield,
+                                      lambda command, **kwargs: self.commands.append(command))
+        line = 'AGENTGUARD_EVENT {"event":"sedentary_alert","monotonic_ms":20}'
+        self.assertEqual(parse_serial_event(line)["event"], "sedentary_alert")
+        self.assertTrue(dispatch_serial_line(line, dispatcher, path))
+        self.assertIn("sedentary_alert", path.read_text(encoding="utf-8"))
+        self.assertFalse(dispatch_serial_line("noise", dispatcher, path))
+        self.assertFalse(dispatch_serial_line(
+            'AGENTGUARD_EVENT {"event":"unknown"}', dispatcher, path))
+
+    def test_serial_decoder_drops_oversized_frame_and_recovers(self):
+        decoder = SerialFrameDecoder(max_frame_bytes=32)
+        self.assertEqual(decoder.feed(b"x" * 33), [])
+        self.assertEqual(decoder.buffered_bytes, 0)
+        self.assertEqual(decoder.feed(
+            b"discarded\nAGENTGUARD_EVENT {}\n"),
+            ["AGENTGUARD_EVENT {}"])
+
+    def test_serial_parser_rejects_non_string_and_deep_events(self):
+        self.assertIsNone(parse_serial_event(
+            'AGENTGUARD_EVENT {"event":[]}'))
+        self.assertIsNone(parse_serial_event(
+            'AGENTGUARD_EVENT {"event":{}}'))
+        deep_json = "[" * 1200 + "]" * 1200
+        self.assertIsNone(parse_serial_event(
+            "AGENTGUARD_EVENT " + deep_json))
 
 
 if __name__ == "__main__":

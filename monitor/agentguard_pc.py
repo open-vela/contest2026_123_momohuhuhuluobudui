@@ -10,6 +10,7 @@ import logging
 import os
 import platform
 import queue
+import select
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +21,93 @@ LOGGER = logging.getLogger("agentguard.pc")
 MAX_BODY_BYTES = 4096
 EVENTS = {"sedentary_alert", "posture_alert", "blur_screen",
           "unblur_screen", "lock_screen"}
+SERIAL_PREFIX = "AGENTGUARD_EVENT "
+MAX_SERIAL_FRAME_BYTES = MAX_BODY_BYTES
+
+
+class SerialFrameDecoder:
+    def __init__(self, max_frame_bytes: int = MAX_SERIAL_FRAME_BYTES) -> None:
+        self._max_frame_bytes = max_frame_bytes
+        self._pending = bytearray()
+        self._discarding = False
+
+    @property
+    def buffered_bytes(self) -> int:
+        return len(self._pending)
+
+    def feed(self, data: bytes) -> list[str]:
+        lines = []
+        self._pending.extend(data)
+        while True:
+            newline = self._pending.find(b"\n")
+            if newline < 0:
+                if len(self._pending) > self._max_frame_bytes:
+                    self._pending.clear()
+                    self._discarding = True
+                break
+
+            raw = bytes(self._pending[:newline])
+            del self._pending[:newline + 1]
+            if self._discarding:
+                self._discarding = False
+                continue
+            if len(raw) > self._max_frame_bytes:
+                continue
+            lines.append(raw.decode("utf-8", errors="replace").rstrip("\r"))
+        return lines
+
+
+def parse_serial_event(line: str) -> dict | None:
+    if not line.startswith(SERIAL_PREFIX):
+        return None
+    try:
+        payload = json.loads(line[len(SERIAL_PREFIX):])
+    except (json.JSONDecodeError, RecursionError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    event = payload.get("event")
+    if not isinstance(event, str) or event not in EVENTS:
+        return None
+    return payload
+
+
+def dispatch_serial_line(line: str, dispatcher: "ActionDispatcher",
+                         log_path: Path) -> bool:
+    payload = parse_serial_event(line.strip())
+    if payload is None:
+        return False
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    result = dispatcher.dispatch(payload["event"], payload)
+    LOGGER.info("serial event=%s result=%s", payload["event"], result)
+    return True
+
+
+def serial_event_loop(device: str, dispatcher: "ActionDispatcher",
+                      log_path: Path) -> None:
+    decoder = SerialFrameDecoder()
+    while True:
+        try:
+            fd = os.open(device, os.O_RDONLY | os.O_NONBLOCK | os.O_NOCTTY)
+            LOGGER.info("listening on serial %s", device)
+            try:
+                while True:
+                    readable, _, _ = select.select([fd], [], [], 1.0)
+                    if not readable:
+                        continue
+                    data = os.read(fd, 4096)
+                    if not data:
+                        raise OSError("serial disconnected")
+                    for line in decoder.feed(data):
+                        dispatch_serial_line(line, dispatcher, log_path)
+            finally:
+                os.close(fd)
+        except OSError as exc:
+            LOGGER.warning("serial unavailable (%s); retrying", exc)
+            decoder = SerialFrameDecoder()
+            threading.Event().wait(1.0)
 
 
 class PrivacyShield:
@@ -189,6 +277,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-lock", action="store_true")
     parser.add_argument("--log", type=Path,
                         default=Path("agentguard-events.jsonl"))
+    parser.add_argument("--serial", help="USB serial device, e.g. /dev/ttyACM0")
     return parser.parse_args()
 
 
@@ -202,6 +291,10 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     dispatcher = ActionDispatcher(allow_lock=args.allow_lock)
+    if args.serial:
+        threading.Thread(target=serial_event_loop,
+                         args=(args.serial, dispatcher, args.log),
+                         daemon=True).start()
     server = ThreadingHTTPServer(
         (args.host, args.port), make_handler(token, dispatcher, args.log))
     LOGGER.info("listening on http://%s:%d (lock=%s)", args.host, args.port,

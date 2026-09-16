@@ -9,6 +9,21 @@ export AGENTGUARD_TOKEN='a-random-value-with-at-least-16-characters'
 python3 agentguard_pc.py --host 0.0.0.0 --allow-lan
 ```
 
+For the submission demo, USB serial avoids Wi-Fi setup. It retains the local
+HTTP health endpoint while consuming framed device events from the cable:
+
+```bash
+export AGENTGUARD_TOKEN='a-random-value-with-at-least-16-characters'
+python3 agentguard_pc.py --serial /dev/ttyACM0 \
+  --log agentguard-usb-events.jsonl
+```
+
+Keep this process running, enable `DEMO` with a three-second BOOT hold, and
+remain in view for 20 seconds. A `sedentary_alert` produces a desktop
+notification and one JSONL record. Serial input accepts only lines beginning
+with `AGENTGUARD_EVENT ` and only the same five allowlisted actions as HTTP.
+Opening the port uses the Python standard library and does not toggle DTR/RTS.
+
 Screen locking is intentionally disabled unless `--allow-lock` is passed.
 Use `--log PATH` to select the received JSONL event log.
 
