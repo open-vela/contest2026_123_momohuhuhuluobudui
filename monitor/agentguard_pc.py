@@ -20,7 +20,7 @@ from typing import Callable
 LOGGER = logging.getLogger("agentguard.pc")
 MAX_BODY_BYTES = 4096
 EVENTS = {"sedentary_alert", "posture_alert", "blur_screen",
-          "unblur_screen", "lock_screen"}
+          "unblur_screen", "lock_screen", "acknowledged"}
 SERIAL_PREFIX = "AGENTGUARD_EVENT "
 MAX_SERIAL_FRAME_BYTES = MAX_BODY_BYTES
 
@@ -186,6 +186,8 @@ class ActionDispatcher:
         if event == "posture_alert":
             self._notify("AgentGuard 坐姿提醒", "抬头、收下巴并放松肩部")
             return "notification sent"
+        if event == "acknowledged":
+            return "acknowledgement recorded"
         raise ValueError(f"unsupported event: {event}")
 
     def _notify(self, title: str, message: str) -> None:

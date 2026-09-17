@@ -79,6 +79,10 @@ class AgentGuardServerTest(unittest.TestCase):
     def test_rejects_unknown_event(self):
         self.assertEqual(self.request("run_arbitrary_command")[0], 422)
 
+    def test_acknowledgement_is_logged_without_os_action(self):
+        self.assertEqual(self.request("acknowledged")[0], 200)
+        self.assertEqual(self.commands, [])
+
     def test_serial_event_dispatches_and_logs(self):
         path = Path(self.tempdir.name) / "serial.jsonl"
         dispatcher = ActionDispatcher(False, self.shield,

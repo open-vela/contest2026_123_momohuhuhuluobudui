@@ -3,14 +3,15 @@
 ## Layers
 
 - `src/core.c`: deterministic policy state machine; no hardware dependencies.
-- `src/vision.c`: RGB565 bring-up heuristic producing face count and posture score.
+- `src/vision_espdl.cpp`: ESP-DL inference adapter producing face boxes/counts.
 - `src/agentguard_main.c`: NuttX V4L2, LCD, button, LED, JSONL and PC HTTP
   adapter.
 - `src/storage.c`: bounded JSONL retention and behavior-event statistics.
 - `tests/`: host tests built with warnings treated as errors.
 
-The vision implementation is deliberately isolated so that ESP-WHO or another
-measured model can replace it without changing the health/privacy policy.
+The ESP-DL algorithm layer is kept close to upstream. A narrow compatibility
+layer adapts image input, allocation and runtime calls to NuttX/openvela so the
+health/privacy policy remains independent from the detector.
 
 ## Host verification
 
@@ -25,20 +26,19 @@ Enable `CONFIG_LVX_USE_DEMO_CONTEST2026_123_AGENTGUARD`; the NSH command is
 `agentguard`. Run it in the background with `agentguard &`.
 
 On ESP32-S3-EYE, AgentGuard shows a live center crop of the 320x240 camera
-frame on the 240x240 ST7789 LCD. A green rectangle marks the region selected
-by the current skin-color heuristic. It is a bring-up aid, not evidence of
-production-grade face detection accuracy.
+frame on the 240x240 ST7789 LCD. ESP-DL detections are mapped to LCD rectangles
+and the HUD reports the current face count. No owner identity is inferred.
 
 The preview includes a compact RGB565 status HUD. It shows the estimated face
 count, posture score, seated time, privacy state, calibration state, health
 alerts and the BOOT-button acknowledgement prompt. Red means no person, green
-means one-person monitoring, yellow means calibration, magenta means
-multi-person/privacy, and orange means an active health alert. The candidate
-box uses the same state color.
+means one-person monitoring, magenta means multi-person/privacy, and orange
+means an active health alert.
 
-The BOOT button acknowledges an active reminder. Supported textual command
-phrases can be checked with `agentguard command "开启隐私模式"`; wiring the
-parser to ESP-SR is a later inference-adapter step.
+Short BOOT press acknowledges an active reminder. Hold BOOT for 3--7 seconds
+and release to toggle privacy; hold for at least 8 seconds and release to
+toggle the 20-second Demo mode. `agentguard command` is a diagnostic text
+parser only; this submission does not claim microphone KWS.
 
 ## Local behavior history
 

@@ -1306,7 +1306,8 @@ static void ag_dispatch_events(uint32_t events, uint64_t now,
           event == AG_EVENT_POSTURE_ALERT ||
           event == AG_EVENT_BLUR_SCREEN ||
           event == AG_EVENT_UNBLUR_SCREEN ||
-          event == AG_EVENT_LOCK_SCREEN)
+          event == AG_EVENT_LOCK_SCREEN ||
+          event == AG_EVENT_ACKNOWLEDGED)
         {
           (void)ag_serial_event_try_write(AG_SERIAL_EVENT_PATH,
                                           ag_event_name(event));

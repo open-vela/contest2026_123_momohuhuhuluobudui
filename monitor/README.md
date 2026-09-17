@@ -32,10 +32,11 @@ export AGENTGUARD_TOKEN='a-random-value-with-at-least-16-characters'
 python3 agentguard_pc.py --serial /dev/ttyACM0 --log /tmp/events.jsonl
 ```
 
-Keep this process running, enable `DEMO` with a three-second BOOT hold, and
-remain in view for 20 seconds. A `sedentary_alert` produces a desktop
-notification and one JSONL record. Serial input accepts only lines beginning
-with `AGENTGUARD_EVENT ` and only the same five allowlisted actions as HTTP.
+Keep this process running, enable `DEMO` by holding BOOT for at least eight
+seconds and then releasing it, and remain in view for 20 seconds. A
+`sedentary_alert` produces a desktop notification and one JSONL record. A short
+BOOT press records `acknowledged`. Serial input accepts only lines beginning
+with `AGENTGUARD_EVENT ` and only allowlisted actions.
 The device sends these records on a best-effort, non-blocking basis so a busy
 console can never stall camera inference. The Linux notification is marked
 critical and remains visible for 10 seconds. Opening the port uses the Python
@@ -45,10 +46,22 @@ USB passthrough environments can still briefly re-enumerate the device.
 Screen locking is intentionally disabled unless `--allow-lock` is passed.
 Use `--log PATH` to select the received JSONL event log.
 
+Summarize the default log, emit machine-readable JSON, or select a custom log:
+
+```bash
+python3 event_stats.py
+python3 event_stats.py --json
+python3 event_stats.py /tmp/events.jsonl
+```
+
+The report counts `sedentary_alert`, `acknowledged`, and actual privacy
+activations (`blur_screen`). Merely enabling privacy mode is not counted as a
+privacy trigger.
+
 Run tests with:
 
 ```bash
-python3 -m unittest -v test_agentguard_pc.py test_run_usb.py
+python3 -m unittest -v test_agentguard_pc.py test_run_usb.py test_event_stats.py
 ```
 
 The old `sit_reminder_monitor.py` is retained as an early prototype and should
