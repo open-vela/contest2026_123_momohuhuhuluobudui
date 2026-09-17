@@ -36,6 +36,7 @@ struct ag_ui_status
   uint32_t lcd_submit_sum_ms;
   uint32_t lcd_submit_max_ms;
   uint32_t face_diagnostics_generation;
+  uint16_t function_button_mv;
   uint8_t face_diagnostics_mnp_attempts;
   uint8_t face_diagnostics_mnp_accepted;
   uint8_t face_diagnostics_faces;

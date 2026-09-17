@@ -8,6 +8,7 @@ enum ag_button_gesture_event
 {
   AG_BUTTON_GESTURE_NONE = 0,
   AG_BUTTON_GESTURE_ACK,
+  AG_BUTTON_GESTURE_TOGGLE_PRIVACY,
   AG_BUTTON_GESTURE_TOGGLE_DEMO,
 };
 
@@ -15,7 +16,6 @@ struct ag_button_gesture
 {
   uint64_t pressed_since_ms;
   bool pressed;
-  bool long_sent;
 };
 
 void ag_button_gesture_init(struct ag_button_gesture *state);

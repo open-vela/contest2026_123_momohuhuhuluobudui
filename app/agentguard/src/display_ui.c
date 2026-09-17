@@ -597,13 +597,13 @@ const char *ag_ui_primary_status(const struct ag_ui_status *status,
   if (status->face_count > 1)
     {
       *color = AG_UI_MAGENTA;
-      return "MULTI PERSON";
+      return status->privacy_enabled ? "PRIVACY SHIELD" : "MULTI PERSON";
     }
 
   if (status->awaiting_ack)
     {
       *color = AG_UI_ORANGE;
-      return "PRESS BOOT TO ACK";
+      return "BOOT: ACK";
     }
 
   if (status->posture_alerted)
@@ -622,6 +622,12 @@ const char *ag_ui_primary_status(const struct ag_ui_status *status,
     {
       *color = AG_UI_YELLOW;
       return "CALIBRATING";
+    }
+
+  if (status->privacy_enabled)
+    {
+      *color = AG_UI_MAGENTA;
+      return "PRIVACY READY";
     }
 
   *color = AG_UI_GREEN;
@@ -723,9 +729,8 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
     }
   else
     {
-      snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu FRM:%05lu",
-               minutes, seconds,
-               (unsigned long)(status->frame_sequence % 100000));
+      snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu KEY:%04u",
+               minutes, seconds, status->function_button_mv);
     }
   ag_ui_text(pixels, frame_width, origin_x + 5, footer_y + 19,
              detail_text, status->privacy_enabled ? AG_UI_MAGENTA :

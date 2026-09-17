@@ -11,12 +11,12 @@ int main(void)
   assert(ag_button_gesture_update(&state, true, 100) == AG_BUTTON_GESTURE_NONE);
   assert(ag_button_gesture_update(&state, false, 500) == AG_BUTTON_GESTURE_ACK);
   assert(ag_button_gesture_update(&state, true, 1000) == AG_BUTTON_GESTURE_NONE);
-  assert(ag_button_gesture_update(&state, true, 3999) == AG_BUTTON_GESTURE_NONE);
-  assert(ag_button_gesture_update(&state, true, 4000) == AG_BUTTON_GESTURE_TOGGLE_DEMO);
-  assert(ag_button_gesture_update(&state, true, 5000) == AG_BUTTON_GESTURE_NONE);
-  assert(ag_button_gesture_update(&state, false, 5100) == AG_BUTTON_GESTURE_NONE);
+  assert(ag_button_gesture_update(&state, true, 4000) == AG_BUTTON_GESTURE_NONE);
+  assert(ag_button_gesture_update(&state, false, 5000) ==
+         AG_BUTTON_GESTURE_TOGGLE_PRIVACY);
   assert(ag_button_gesture_update(&state, true, 6000) == AG_BUTTON_GESTURE_NONE);
-  assert(ag_button_gesture_update(&state, false, 9000) ==
+  assert(ag_button_gesture_update(&state, true, 13999) == AG_BUTTON_GESTURE_NONE);
+  assert(ag_button_gesture_update(&state, false, 14000) ==
          AG_BUTTON_GESTURE_TOGGLE_DEMO);
   puts("AgentGuard button gesture tests: PASS");
   return 0;

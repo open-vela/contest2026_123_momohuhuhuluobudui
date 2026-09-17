@@ -4,7 +4,7 @@ CFLAGS ?= -std=c11 -Wall -Wextra -Werror -pedantic -O2
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Werror -pedantic -O2
 
 ROOT := ..
-TARGETS := test_button_device test_button_gesture test_serial_event test_core test_vision test_vision_health test_diagnostic_fingerprint \
+TARGETS := test_button_device test_button_gesture test_button_ladder test_led_pattern test_serial_event test_core test_vision test_vision_health test_diagnostic_fingerprint \
 	test_face_diagnostics test_face_fallback test_face_presence \
 	test_face_authority_heuristic test_face_authority_espdl \
 	test_storage test_display_ui \
@@ -25,8 +25,16 @@ test_button_device: test_button_device.c $(ROOT)/src/button_device.c \
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_button_device.c $(ROOT)/src/button_device.c -o $@
 
 test_button_gesture: test_button_gesture.c $(ROOT)/src/button_gesture.c \
-  $(ROOT)/include/agentguard/button_gesture.h
+	$(ROOT)/include/agentguard/button_gesture.h
 	$(CC) $(CFLAGS) -I$(ROOT)/include test_button_gesture.c $(ROOT)/src/button_gesture.c -o $@
+
+test_button_ladder: test_button_ladder.c $(ROOT)/src/button_ladder.c \
+	$(ROOT)/include/agentguard/button_ladder.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_button_ladder.c $(ROOT)/src/button_ladder.c -o $@
+
+test_led_pattern: test_led_pattern.c $(ROOT)/src/led_pattern.c \
+	$(ROOT)/include/agentguard/led_pattern.h
+	$(CC) $(CFLAGS) -I$(ROOT)/include test_led_pattern.c $(ROOT)/src/led_pattern.c -o $@
 
 test_serial_event: test_serial_event.c $(ROOT)/src/serial_event.c \
   $(ROOT)/include/agentguard/serial_event.h
@@ -198,6 +206,8 @@ test_espdl_tie_selftest: test_espdl_tie_selftest.cpp \
 test: $(TARGETS)
 	./test_button_device
 	./test_button_gesture
+	./test_button_ladder
+	./test_led_pattern
 	./test_serial_event
 	./test_core
 	./test_vision

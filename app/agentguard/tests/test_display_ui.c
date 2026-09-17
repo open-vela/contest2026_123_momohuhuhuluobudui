@@ -246,6 +246,14 @@ int main(void)
   status.privacy_enabled = true;
   multiple_color = ag_ui_face_color(&status);
   assert(multiple_color != one_face_color);
+  {
+    uint16_t color;
+    assert(strcmp(ag_ui_primary_status(&status, &color),
+                  "PRIVACY SHIELD") == 0);
+    status.face_count = 1;
+    assert(strcmp(ag_ui_primary_status(&status, &color),
+                  "PRIVACY READY") == 0);
+  }
 
   status.face_count = 1;
   status.privacy_enabled = false;
@@ -295,7 +303,7 @@ int main(void)
     status.ai_error = false;
     status.awaiting_ack = true;
     assert(strcmp(ag_ui_primary_status(&status, &color),
-                  "PRESS BOOT TO ACK") == 0);
+                  "BOOT: ACK") == 0);
     status.awaiting_ack = false;
     status.acknowledged = false;
     assert(strcmp(ag_ui_primary_status(&status, &color), "MONITORING") == 0);
