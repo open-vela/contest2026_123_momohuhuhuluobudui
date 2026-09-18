@@ -3,7 +3,7 @@
   "team_id": "contest2026_123_momohuhuhuluobudui",
   "github_login": "yhx06",
   "generator": "claude-code-collector@1.2.0",
-  "updated_at": "2026-07-18T15:16:43.906Z",
+  "updated_at": "2026-09-18T00:41:32.967656+00:00",
   "sessions": [
     {
       "session_id": "5cb30469-8714-428a-a7d2-143ff6d1d500",
@@ -158,6 +158,42 @@
       "collection_mode": "cli",
       "health": "ok",
       "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "2a459cb1-be64-459a-8bd5-c1a092865f5a",
+      "tool": "claude-code",
+      "started_at": "2026-07-15T02:54:20.790Z",
+      "last_event_at": "2026-07-15T02:54:20.790Z",
+      "event_count": 388,
+      "raw_event_count": 513,
+      "file_path": "logs/yhx06/2026-07-15/claude-code__2a459cb1-be64-459a-8bd5-c1a092865f5a.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "23f80624-4f3a-4572-9542-fe0bfffb5211",
+      "tool": "claude-code",
+      "started_at": "2026-07-15T02:57:32.229Z",
+      "last_event_at": "2026-07-15T04:57:21.378Z",
+      "event_count": 409,
+      "raw_event_count": 561,
+      "file_path": "logs/yhx06/2026-07-15/claude-code__23f80624-4f3a-4572-9542-fe0bfffb5211.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5-pro"
+    },
+    {
+      "session_id": "80a98738-1888-4975-80c0-f56f8c70f50d",
+      "tool": "claude-code",
+      "started_at": "2026-08-12T09:23:03.691Z",
+      "last_event_at": "2026-08-12T09:23:03.691Z",
+      "event_count": 2,
+      "raw_event_count": 10,
+      "file_path": "logs/yhx06/2026-08-12/claude-code__80a98738-1888-4975-80c0-f56f8c70f50d.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "<synthetic>"
     }
   ]
 }
