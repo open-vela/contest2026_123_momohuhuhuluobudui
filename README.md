@@ -71,12 +71,22 @@ cd monitor
 python3 run_usb.py
 ```
 
+录制视频或现场演示推荐一键启动实时统计面板：
+
+```bash
+cd monitor
+python3 run_demo.py
+```
+
+浏览器将打开 `http://127.0.0.1:8765`，每 2 秒刷新今日/累计数据和最近事件。
+
 默认日志位于 `~/.local/state/agentguard/events.jsonl`（设置 `XDG_STATE_HOME` 时跟随该目录）。查看累计统计：
 
 ```bash
 python3 event_stats.py
 python3 event_stats.py --json
 python3 event_stats.py /path/to/events.jsonl
+python3 event_stats.py --csv agentguard-events.csv
 ```
 
 输出包含有效事件总数、久坐提醒次数、用户确认次数、实际隐私遮罩触发次数和损坏日志行数。隐私次数统计 `blur_screen`，避免把仅开启隐私模式误算成真正的隐私事件。详见 [电脑代理说明](monitor/README.md)。
@@ -90,6 +100,8 @@ python3 event_stats.py /path/to/events.jsonl
 | 按住 BOOT ≥8 秒，松开 | 开启/关闭 Demo（久坐阈值缩短至 20 秒） |
 | 隐私模式中出现第二张脸 | LCD 隐私提示、专用灯效、电脑遮罩与 `blur_screen` 事件 |
 
+LCD 底栏显示 `P:ON/OFF` 和 `D:ON/OFF`，分别表示隐私与 Demo 模式，不再显示按键 ADC 诊断值。
+
 ## 验证状态
 
 已在 ESP32-S3-EYE 实机验证：空场景稳定为 `FACE:0`；单张正面人脸为 `FACE:1` 并显示一个框；两张人脸基本稳定为 `FACE:2` 并显示两个框；久坐提醒、确认、隐私切换、Demo 切换、电脑通知和隐私遮罩均可用。当前单帧推理约 840 ms，受画面和调试配置影响。
@@ -99,7 +111,8 @@ python3 event_stats.py /path/to/events.jsonl
 ```bash
 make -C app/agentguard/tests clean test
 cd monitor
-python3 -m unittest -v test_agentguard_pc.py test_run_usb.py test_event_stats.py
+python3 -m unittest -v test_agentguard_pc.py test_run_usb.py \
+  test_event_stats.py test_dashboard.py test_run_demo.py
 ```
 
 目前没有用标准数据集测量识别准确率，也尚未完成整机功耗和长时间稳定性量化，因此报告中不虚构这些数字；提交前建议补充至少 2 小时持续运行记录。

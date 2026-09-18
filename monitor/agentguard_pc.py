@@ -13,6 +13,7 @@ import queue
 import select
 import subprocess
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
@@ -77,12 +78,19 @@ def dispatch_serial_line(line: str, dispatcher: "ActionDispatcher",
     payload = parse_serial_event(line.strip())
     if payload is None:
         return False
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    append_event_log(log_path, payload)
     result = dispatcher.dispatch(payload["event"], payload)
     LOGGER.info("serial event=%s result=%s", payload["event"], result)
     return True
+
+
+def append_event_log(log_path: Path, payload: dict) -> None:
+    record = dict(payload)
+    record["received_at"] = datetime.now(timezone.utc).isoformat(
+        timespec="seconds").replace("+00:00", "Z")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def serial_event_loop(device: str, dispatcher: "ActionDispatcher",
@@ -259,9 +267,7 @@ def make_handler(token: str, dispatcher: ActionDispatcher, log_path: Path):
             if event not in EVENTS:
                 self._json_response(422, {"error": "unsupported event"})
                 return
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            with log_path.open("a", encoding="utf-8") as stream:
-                stream.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            append_event_log(log_path, payload)
             result = dispatcher.dispatch(event, payload)
             LOGGER.info("event=%s result=%s", event, result)
             self._json_response(200, {"status": "ok", "result": result})

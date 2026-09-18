@@ -16,6 +16,19 @@ cd monitor
 python3 run_usb.py
 ```
 
+For the final demo, start the USB listener and live dashboard together:
+
+```bash
+cd monitor
+python3 run_demo.py
+```
+
+The command opens `http://127.0.0.1:8765`, which refreshes every two seconds
+and shows cumulative/today sedentary alerts, acknowledgements, privacy
+triggers, and the ten most recent timestamped events. Use `--no-browser` when
+you want to open the URL manually, or `--port 9876` if the default port is in
+use. Ctrl+C stops both child processes.
+
 The launcher finds `agentguard_pc.py` relative to itself, generates a temporary
 local token when `AGENTGUARD_TOKEN` is unset, and stores events in
 `~/.local/state/agentguard/events.jsonl` (or `$XDG_STATE_HOME/agentguard`). Use
@@ -52,16 +65,21 @@ Summarize the default log, emit machine-readable JSON, or select a custom log:
 python3 event_stats.py
 python3 event_stats.py --json
 python3 event_stats.py /tmp/events.jsonl
+python3 event_stats.py --csv agentguard-events.csv
 ```
 
-The report counts `sedentary_alert`, `acknowledged`, and actual privacy
-activations (`blur_screen`). Merely enabling privacy mode is not counted as a
-privacy trigger.
+Newly received events include a UTC `received_at` timestamp. The report counts
+both cumulative and local-calendar-day totals for `sedentary_alert`,
+`acknowledged`, and actual privacy activations (`blur_screen`), plus the most
+recent event. Older timestamp-free JSONL records remain valid and contribute
+to cumulative totals. Merely enabling privacy mode is not counted as a privacy
+trigger. CSV is written as UTF-8 with BOM for spreadsheet compatibility.
 
 Run tests with:
 
 ```bash
-python3 -m unittest -v test_agentguard_pc.py test_run_usb.py test_event_stats.py
+python3 -m unittest -v test_agentguard_pc.py test_run_usb.py \
+  test_event_stats.py test_dashboard.py test_run_demo.py
 ```
 
 The old `sit_reminder_monitor.py` is retained as an early prototype and should

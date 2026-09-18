@@ -90,7 +90,10 @@ class AgentGuardServerTest(unittest.TestCase):
         line = 'AGENTGUARD_EVENT {"event":"sedentary_alert","monotonic_ms":20}'
         self.assertEqual(parse_serial_event(line)["event"], "sedentary_alert")
         self.assertTrue(dispatch_serial_line(line, dispatcher, path))
-        self.assertIn("sedentary_alert", path.read_text(encoding="utf-8"))
+        record = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(record["event"], "sedentary_alert")
+        self.assertEqual(record["monotonic_ms"], 20)
+        self.assertRegex(record["received_at"], r"Z$")
         self.assertEqual(
             self.commands[-1],
             ["notify-send", "--urgency=critical", "--expire-time=10000",

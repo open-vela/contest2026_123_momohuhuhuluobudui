@@ -722,15 +722,13 @@ void ag_ui_render_rgb565(uint16_t *pixels, uint16_t frame_width,
       snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu BTN:ERR",
                minutes, seconds);
     }
-  else if (status->demo_mode)
-    {
-      snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu DEMO",
-               minutes, seconds);
-    }
   else
     {
-      snprintf(detail_text, sizeof(detail_text), "SIT:%02lu:%02lu KEY:%04u",
-               minutes, seconds, status->function_button_mv);
+      snprintf(detail_text, sizeof(detail_text),
+               "SIT:%02lu:%02lu P:%s D:%s",
+               minutes, seconds,
+               status->privacy_enabled ? "ON" : "OFF",
+               status->demo_mode ? "ON" : "OFF");
     }
   ag_ui_text(pixels, frame_width, origin_x + 5, footer_y + 19,
              detail_text, status->privacy_enabled ? AG_UI_MAGENTA :
