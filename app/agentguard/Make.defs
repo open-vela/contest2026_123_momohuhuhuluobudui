@@ -1,0 +1,11 @@
+ifneq ($(CONFIG_LVX_USE_DEMO_CONTEST2026_123_AGENTGUARD),)
+CONFIGURED_APPS += $(APPDIR)/packages/demos/contest2026_123_agentguard
+endif
+
+ifeq ($(CONFIG_AGENTGUARD_ESP_DL),y)
+# The Xtensa NuttX toolchain glue adds libsupc++ but not the GNU STL archive.
+# ESP-DL's model graph uses std::vector/list/map/string.
+EXTRA_LIBS += $(wildcard $(shell $(CXX) $(ARCHCPUFLAGS) \
+  --print-file-name=libstdc++.a))
+EXTRA_LIBS += $(APPDIR)/packages/demos/contest2026_123_agentguard/third_party/esp-dl/fbs_loader/lib/esp32s3/libfbs_model.a
+endif
