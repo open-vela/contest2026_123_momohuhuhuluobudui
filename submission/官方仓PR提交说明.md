@@ -1,4 +1,16 @@
-# 官方专属仓 PR 提交说明
+# 官方专属仓 PR #1 合并说明
+
+## 当前状态（2026-09-19 核对）
+
+- PR：https://github.com/open-vela/contest2026_123_momohuhuhuluobudui/pull/1
+- 状态：Open，非 Draft
+- 目标分支：`dev-ai-contest-2026`
+- 来源分支：`yhx06:feature/ai-error-safe-state`
+- 最新提交：`514ab50`
+- GitHub 合并状态：`mergeable: true`、`mergeable_state: clean`
+- `cla / cla-check`：Success
+
+不要重复创建 PR。直接打开 PR #1，完成 Review 并合入。
 
 当前最终代码和 AI Coding 日志位于个人 Fork：
 
@@ -10,7 +22,7 @@
 - 仓库：`https://github.com/open-vela/contest2026_123_momohuhuhuluobudui`
 - 目标分支：`dev-ai-contest-2026`
 
-## 创建 PR
+## 若 PR #1 页面无法打开
 
 浏览器打开：
 
@@ -25,13 +37,13 @@ head repository: yhx06/contest2026_123_momohuhuhuluobudui
 compare: feature/ai-error-safe-state
 ```
 
-## PR 标题
+## 建议把 PR 标题改为
 
 ```text
 feat: submit AgentGuard desktop health and privacy guardian
 ```
 
-## PR 正文
+## 建议把 PR 正文改为
 
 ```markdown
 ## Summary
@@ -65,8 +77,7 @@ The project detects and counts faces. It does not perform owner/identity recogni
 
 ## CLA 与合入
 
-1. 创建 PR 后查看 `cla/signature` 检查。
-2. 若未通过，使用报名时的 GitHub 账号在 openvela 官网签署 CLA。
-3. 回到 PR 评论 `/check-cla`。
-4. 检查通过后执行 Review，并将 PR 合入 `dev-ai-contest-2026`。
-5. 打开官方仓分支，确认根 README、`app/agentguard/`、`monitor/`、`skills/` 和 `logs/yhx06/` 均存在。
+1. 当前 CLA 检查已经成功，无需重新签署或评论 `/check-cla`。
+2. 在 PR #1 的 Files changed 页快速确认没有 Token、密码、构建产物或无关个人文件。
+3. 执行 Review，并将 PR 合入 `dev-ai-contest-2026`。
+4. 打开官方仓分支，确认根 README、`app/agentguard/`、`monitor/`、`skills/` 和 `logs/yhx06/` 均存在。
