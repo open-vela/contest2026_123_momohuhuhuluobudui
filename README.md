@@ -54,6 +54,9 @@ source <openvela-root>/myenv/bin/activate
 make -C <openvela-root>/nuttx -j8
 ```
 
+该配置脚本还会幂等应用 ESP32-S3 CAM 的 VSYNC 稳定性补丁，避免每帧人为翻转
+VSYNC 极性造成摄像头预览出现移动黑横条；重复执行不会重复修改 NuttX 源码。
+
 生成的 `nuttx.bin` 必须小于 `0x300000`，因为 `0x300000..0x3fffff` 用于 LittleFS。烧录时不要使用会擦除整个 Flash 的 `erase-flash`，以免清除历史事件。具体 JTAG 烧录参数见 [应用说明](app/agentguard/README.md)。
 
 进入 NSH 后运行：

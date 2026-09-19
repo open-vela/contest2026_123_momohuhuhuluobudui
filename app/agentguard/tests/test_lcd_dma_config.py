@@ -10,6 +10,23 @@ from pathlib import Path
 TEST_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TEST_DIR.parents[2]
 CONFIG_SCRIPT = REPO_ROOT / "tools" / "apply_agentguard_config.sh"
+CAMERA_PATCH = (REPO_ROOT / "tools" / "patches" /
+                "nuttx-esp32s3-cam-vsync.patch")
+
+CAMERA_SOURCE = "\n" * 758 + r'''/* preserve-agentguard-sentinel */
+
+  priv->capturing = true;
+
+  esp32s3_gpio_matrix_in(CONFIG_ESP32S3_CAM_VSYNC_PIN,
+                         CAM_V_SYNC_IDX, false);
+  up_udelay(10);
+  esp32s3_gpio_matrix_in(CONFIG_ESP32S3_CAM_VSYNC_PIN,
+                         CAM_V_SYNC_IDX, true);
+
+  return OK;
+}
+
+'''
 
 FAKE_KCONFIG_TWEAK = r'''#!/usr/bin/env python3
 import sys
@@ -65,17 +82,24 @@ def main() -> None:
         openvela_root = Path(temp) / "openvela"
         contest_root = openvela_root / "contest"
         tools_dir = contest_root / "tools"
+        patches_dir = tools_dir / "patches"
         nuttx_dir = openvela_root / "nuttx"
         tweak = (openvela_root / "prebuilts" / "build-tools" /
                  "linux-x86_64" / "bin" / "kconfig-tweak")
         copied_script = tools_dir / CONFIG_SCRIPT.name
+        copied_patch = patches_dir / CAMERA_PATCH.name
+        camera_source = (nuttx_dir / "arch" / "xtensa" / "src" /
+                         "esp32s3" / "esp32s3_cam.c")
         config_path = nuttx_dir / ".config"
 
-        tools_dir.mkdir(parents=True)
+        patches_dir.mkdir(parents=True)
         nuttx_dir.mkdir(parents=True)
+        camera_source.parent.mkdir(parents=True)
         tweak.parent.mkdir(parents=True)
         shutil.copy2(CONFIG_SCRIPT, copied_script)
+        shutil.copy2(CAMERA_PATCH, copied_patch)
         copied_script.chmod(0o755)
+        camera_source.write_text(CAMERA_SOURCE, encoding="utf-8")
         tweak.write_text(FAKE_KCONFIG_TWEAK, encoding="utf-8")
         tweak.chmod(0o755)
         config_path.write_text("# isolated AgentGuard test config\n",
@@ -90,14 +114,43 @@ def main() -> None:
         environment = os.environ.copy()
         environment.pop("AGENTGUARD_SERVER_IPV4", None)
         environment.pop("AGENTGUARD_TOKEN_FILE", None)
-        subprocess.run([str(copied_script)], check=True, env=environment,
-                       capture_output=True, text=True)
+        first_run = subprocess.run(
+            [str(copied_script)], check=False, env=environment,
+            capture_output=True, text=True,
+        )
+        second_run = subprocess.run(
+            [str(copied_script)], check=False, env=environment,
+            capture_output=True, text=True,
+        )
+
+        assert first_run.returncode == 0, first_run.stdout + first_run.stderr
+        assert second_run.returncode == 0, second_run.stdout + second_run.stderr
+        assert "Applied AgentGuard ESP32-S3 CAM VSYNC fix" in first_run.stdout
+        assert "ESP32-S3 CAM VSYNC fix already applied" in second_run.stdout
+        assert "esp32s3_gpio_matrix_in" not in camera_source.read_text(
+            encoding="utf-8"
+        )
+        assert "preserve-agentguard-sentinel" in camera_source.read_text(
+            encoding="utf-8"
+        )
 
         values = read_values(config_path)
         assert values["CONFIG_ESP32S3_SPI_DMA"] == "y"
         assert values["CONFIG_ESP32S3_SPI_DMA_BUFSIZE"] == "15360"
         assert values["CONFIG_ESP32S3_SPI_DMATHRESHOLD"] == "64"
         assert values["CONFIG_LCD_ST7789_FREQUENCY"] == "80000000"
+
+        incompatible_source = "/* incompatible CAM implementation */\n"
+        camera_source.write_text(incompatible_source, encoding="utf-8")
+        config_before_failure = config_path.read_text(encoding="utf-8")
+        failed_run = subprocess.run(
+            [str(copied_script)], check=False, env=environment,
+            capture_output=True, text=True,
+        )
+        assert failed_run.returncode != 0
+        assert "Cannot apply ESP32-S3 CAM VSYNC fix cleanly" in failed_run.stderr
+        assert camera_source.read_text(encoding="utf-8") == incompatible_source
+        assert config_path.read_text(encoding="utf-8") == config_before_failure
 
     print("AgentGuard LCD DMA config test: PASS")
 

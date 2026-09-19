@@ -1,0 +1,15 @@
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_cam.c b/arch/xtensa/src/esp32s3/esp32s3_cam.c
+--- a/arch/xtensa/src/esp32s3/esp32s3_cam.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_cam.c
+@@ -758,11 +758,5 @@ static int esp32s3_cam_start_capture(struct imgdata_s *data,
+
+   priv->capturing = true;
+
+-  esp32s3_gpio_matrix_in(CONFIG_ESP32S3_CAM_VSYNC_PIN,
+-                         CAM_V_SYNC_IDX, false);
+-  up_udelay(10);
+-  esp32s3_gpio_matrix_in(CONFIG_ESP32S3_CAM_VSYNC_PIN,
+-                         CAM_V_SYNC_IDX, true);
+-
+   return OK;
+ }

@@ -14,6 +14,7 @@ if [[ -z "$openvela_root" ]]; then
 fi
 config_file="$openvela_root/nuttx/.config"
 tweak="$openvela_root/prebuilts/build-tools/linux-x86_64/bin/kconfig-tweak"
+camera_patch="$repo_root/tools/patches/nuttx-esp32s3-cam-vsync.patch"
 server_ipv4=${AGENTGUARD_SERVER_IPV4:-}
 token_file=${AGENTGUARD_TOKEN_FILE:-}
 
@@ -24,6 +25,22 @@ fi
 
 if [[ ! -x "$tweak" ]]; then
   echo "Missing executable kconfig-tweak: $tweak" >&2
+  exit 1
+fi
+
+# Starting a capture must wait for the sensor's next real VSYNC edge.  The
+# older ESP32-S3 CAM lower half flips the GPIO-matrix polarity on every frame,
+# synthesizing an edge in the middle of a sensor frame and leaving a moving
+# black band in the zero-initialized DMA buffer.  Apply the tested deletion
+# once while preserving every other local NuttX change.
+if git -C "$openvela_root/nuttx" apply --reverse --check "$camera_patch" \
+    >/dev/null 2>&1; then
+  echo "AgentGuard ESP32-S3 CAM VSYNC fix already applied"
+elif git -C "$openvela_root/nuttx" apply --check "$camera_patch"; then
+  git -C "$openvela_root/nuttx" apply "$camera_patch"
+  echo "Applied AgentGuard ESP32-S3 CAM VSYNC fix"
+else
+  echo "Cannot apply ESP32-S3 CAM VSYNC fix cleanly: $camera_patch" >&2
   exit 1
 fi
 
