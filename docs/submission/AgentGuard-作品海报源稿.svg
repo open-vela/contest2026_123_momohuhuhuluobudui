@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071421"/>
+      <stop offset="1" stop-color="#102a3b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4de0c1"/>
+      <stop offset="1" stop-color="#4da3ff"/>
+    </linearGradient>
+    <style>
+      .cn { font-family: 'Noto Sans CJK SC', 'Droid Sans Fallback', sans-serif; }
+      .title { font-size: 72px; font-weight: 800; fill: #f6fbff; }
+      .subtitle { font-size: 28px; fill: #b9d2df; }
+      .section { font-size: 28px; font-weight: 700; fill: #4de0c1; }
+      .body { font-size: 22px; fill: #e5f0f5; }
+      .small { font-size: 18px; fill: #a9c0cc; }
+      .tiny { font-size: 15px; fill: #a9c0cc; }
+      .metric { font-size: 38px; font-weight: 800; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1430" cy="90" r="190" fill="#143f52" opacity="0.55"/>
+  <circle cx="1520" cy="770" r="260" fill="#0b3544" opacity="0.55"/>
+  <rect x="70" y="62" width="12" height="124" rx="6" fill="url(#accent)"/>
+  <text x="112" y="125" class="cn title">AgentGuard</text>
+  <text x="112" y="172" class="cn subtitle">基于 openvela + ESP-DL 的桌面健康与隐私守护终端</text>
+  <text x="1220" y="145" class="cn small">【待填写：队伍名称 / 成员姓名】</text>
+
+  <rect x="70" y="225" width="460" height="260" rx="24" fill="#102f40" stroke="#285267" stroke-width="2"/>
+  <text x="104" y="275" class="cn section">解决什么问题</text>
+  <text x="104" y="322" class="cn body">• 长时间伏案却忘记起身</text>
+  <text x="104" y="363" class="cn body">• 身后来人可能看到敏感屏幕</text>
+  <text x="104" y="404" class="cn body">• 云端摄像头方案带来隐私风险</text>
+  <text x="104" y="456" class="cn small">本地检测 · 不上传图像 · 断网仍可工作</text>
+
+  <rect x="570" y="225" width="960" height="260" rx="24" fill="#102f40" stroke="#285267" stroke-width="2"/>
+  <text x="604" y="275" class="cn section">端侧闭环</text>
+  <rect x="610" y="322" width="150" height="82" rx="16" fill="#17485a"/>
+  <text x="645" y="372" class="cn body">V4L2 摄像头</text>
+  <text x="785" y="372" class="cn metric">→</text>
+  <rect x="845" y="322" width="175" height="82" rx="16" fill="#17485a"/>
+  <text x="875" y="372" class="cn body">ESP-DL 检测</text>
+  <text x="1045" y="372" class="cn metric">→</text>
+  <rect x="1105" y="322" width="175" height="82" rx="16" fill="#17485a"/>
+  <text x="1125" y="355" class="cn body">健康 / 隐私</text>
+  <text x="1143" y="387" class="cn body">状态机</text>
+  <text x="1305" y="372" class="cn metric">→</text>
+  <rect x="1365" y="322" width="120" height="82" rx="16" fill="#17485a"/>
+  <text x="1380" y="355" class="cn body">LCD / LED</text>
+  <text x="1390" y="387" class="cn body">电脑联动</text>
+  <text x="610" y="450" class="cn small">ESP-DL 算法层尽量保持官方实现，仅增加 NuttX/openvela 输入、内存与任务兼容层</text>
+
+  <rect x="70" y="525" width="340" height="235" rx="22" fill="#102f40" stroke="#285267" stroke-width="2"/>
+  <text x="102" y="575" class="cn section">实时人数感知</text>
+  <text x="102" y="628" class="cn metric">FACE: 0 / 1 / 2</text>
+  <text x="102" y="673" class="cn body">LCD 实时画框与计数</text>
+  <text x="102" y="714" class="cn small">不做身份识别，不保存原始画面</text>
+
+  <rect x="435" y="525" width="340" height="235" rx="22" fill="#102f40" stroke="#285267" stroke-width="2"/>
+  <text x="467" y="575" class="cn section">久坐健康提醒</text>
+  <text x="467" y="628" class="cn metric">20 s DEMO</text>
+  <text x="467" y="673" class="cn body">板端提示 + Power LED</text>
+  <text x="467" y="714" class="cn small">短按 BOOT 确认，事件同步统计</text>
+
+  <rect x="800" y="525" width="340" height="235" rx="22" fill="#102f40" stroke="#285267" stroke-width="2"/>
+  <text x="832" y="575" class="cn section">自动隐私保护</text>
+  <text x="832" y="628" class="cn metric">FACE: 2</text>
+  <text x="832" y="673" class="cn body">LED 双闪 + 电脑全屏遮罩</text>
+  <text x="832" y="714" class="cn small">第二人离开后自动恢复</text>
+
+  <rect x="1165" y="525" width="365" height="235" rx="22" fill="#102f40" stroke="#285267" stroke-width="2"/>
+  <text x="1197" y="575" class="cn section">可验证工程交付</text>
+  <text x="1197" y="628" class="cn metric">22 PC TESTS</text>
+  <text x="1197" y="673" class="cn body">板端主机测试 + 实机验证</text>
+  <text x="1197" y="714" class="cn small">JSONL 审计 · CSV · 实时统计面板</text>
+
+  <rect x="70" y="806" width="1460" height="2" fill="url(#accent)"/>
+  <text x="70" y="850" class="cn small">ESP32-S3-EYE · openvela/NuttX · ESP-DL · USB 优先 / HTTP 可选 · Apache-2.0</text>
+  <text x="1040" y="850" class="cn tiny">github.com/open-vela/contest2026_123_momohuhuhuluobudui</text>
+</svg>
