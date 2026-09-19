@@ -1,0 +1,50 @@
+config LVX_USE_DEMO_CONTEST2026_123_AGENTGUARD
+	tristate "AgentGuard edge health guardian"
+	default n
+	depends on DRIVERS_VIDEO
+	---help---
+		Enable AgentGuard for the ESP32-S3-EYE camera, button and LED.
+
+if LVX_USE_DEMO_CONTEST2026_123_AGENTGUARD
+
+config AGENTGUARD_ESP_DL
+	bool "Use ESP-DL neural-network face detector"
+	default y
+	depends on ARCH_CHIP_ESP32S3
+	select HAVE_CXX
+	select LIBCXXTOOLCHAIN
+	---help---
+		Use Espressif ESP-DL v3.2.0 with the quantized MSR+MNP human-face
+		detector. The existing skin-color detector remains available when
+		this option is disabled for host tests and camera bring-up.
+
+config AGENTGUARD_SERVER_IPV4
+	string "PC agent IPv4 address"
+	default "192.168.1.100"
+
+config AGENTGUARD_SERVER_PORT
+	int "PC agent port"
+	default 8080
+	range 1 65535
+
+config AGENTGUARD_SHARED_TOKEN
+	string "PC agent shared token"
+	default "change-me-before-deployment"
+
+config AGENTGUARD_LOG_PATH
+	string "JSONL behavior log path"
+	default "/mnt/spif/agentguard-events.jsonl"
+
+config AGENTGUARD_LOG_RETENTION_DAYS
+	int "Behavior log retention in days"
+	default 7
+	range 1 30
+
+config AGENTGUARD_LOG_MAX_BYTES
+	int "Maximum behavior log size"
+	default 524288
+	range 4096 4194304
+	---help---
+		Bounds storage when wall-clock time is unavailable or not synchronized.
+
+endif

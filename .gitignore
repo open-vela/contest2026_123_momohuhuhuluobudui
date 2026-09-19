@@ -1,0 +1,33 @@
+# Build outputs
+build/
+out/
+*.o
+*.a
+!app/agentguard/third_party/esp-dl/fbs_loader/lib/esp32s3/libfbs_model.a
+*.elf
+*.hex
+*.map
+*.pyc
+__pycache__/
+/monitor/*.jsonl
+
+# NuttX application dependency markers generated in the source link
+/app/agentguard/.built
+/app/agentguard/.depend
+/app/agentguard/Make.dep
+
+# Extensionless host-test executables; keep their source files
+/app/agentguard/tests/test_*
+!/app/agentguard/tests/test_*.c
+!/app/agentguard/tests/test_*.cpp
+!/app/agentguard/tests/test_*.py
+
+# Local checkout and diagnostic material, never part of the submission
+/.git.codex-hold
+/third_party/
+/test_lcd.c
+/ESP32-S3-EYE_Face_Detection_Guide.md
+/Quick_Start_Face_Detection.md
+/申请材料.docx
+/2026 首届 openvela AI 硬件开发者大赛 - 作品提交模板.docx
+/.worktrees/
