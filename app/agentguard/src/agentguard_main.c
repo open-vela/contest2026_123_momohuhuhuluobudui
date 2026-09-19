@@ -15,6 +15,7 @@
 #include "agentguard/lcd_bounce.h"
 #include "agentguard/lcd_timing.h"
 #include "agentguard/lcd_transfer.h"
+#include "agentguard/led_device.h"
 #include "agentguard/led_pattern.h"
 #include "agentguard/storage.h"
 #include "agentguard/thread_priority.h"
@@ -1432,7 +1433,11 @@ static int ag_run(void)
   ag_display_camera_phase(&display_worker, 6);
   g_agentguard_camera_irq_count = 0;
 
-  led_fd = open(AG_LED_PATH, O_WRONLY);
+  led_fd = ag_led_open_device(AG_LED_PATH, userled_lower_initialize);
+  if (led_fd < 0)
+    {
+      fprintf(stderr, "agentguard: LED initialization failed: %d\n", errno);
+    }
   button_fd = ag_button_open_device(AG_BUTTON_PATH, btn_lower_initialize);
   function_button_fd = ag_function_button_open();
   ag_vision_init(&vision);

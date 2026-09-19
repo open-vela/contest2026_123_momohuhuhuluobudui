@@ -23,6 +23,13 @@ cd monitor
 python3 run_demo.py
 ```
 
+On Ubuntu/Debian, install the Tk binding used by the full-screen privacy
+shield before the demo:
+
+```bash
+sudo apt-get install -y python3-tk
+```
+
 The command opens `http://127.0.0.1:8765`, which refreshes every two seconds
 and shows cumulative/today sedentary alerts, acknowledgements, privacy
 triggers, and the ten most recent timestamped events. Use `--no-browser` when

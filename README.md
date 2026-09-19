@@ -23,7 +23,7 @@ flowchart LR
     DL --> POLICY[久坐/隐私策略]
     BOOT[BOOT 键] --> POLICY
     POLICY --> LCD[LCD 框选与状态]
-    POLICY --> LED[差异化 RGB 灯效]
+    POLICY --> LED[绿色 Power LED 差异化灯效]
     POLICY --> FS[LittleFS JSONL]
     POLICY --> USB[USB 串口事件]
     USB --> PC[电脑安全代理]
@@ -79,6 +79,11 @@ python3 run_demo.py
 ```
 
 浏览器将打开 `http://127.0.0.1:8765`，每 2 秒刷新今日/累计数据和最近事件。
+Ubuntu/Debian 需要先安装 `python3-tk`，电脑端全屏隐私遮罩依赖该组件：
+
+```bash
+sudo apt-get install -y python3-tk
+```
 
 默认日志位于 `~/.local/state/agentguard/events.jsonl`（设置 `XDG_STATE_HOME` 时跟随该目录）。查看累计统计：
 

@@ -7,7 +7,7 @@ MODULE    = $(CONFIG_LVX_USE_DEMO_CONTEST2026_123_AGENTGUARD)
 
 CFLAGS += -I$(APPDIR)/packages/demos/contest2026_123_agentguard/include
 CSRCS = src/button_device.c src/button_gesture.c src/button_ladder.c \
-  src/led_pattern.c src/serial_event.c src/core.c src/vision.c \
+  src/led_device.c src/led_pattern.c src/serial_event.c src/core.c src/vision.c \
   src/vision_health.c src/storage.c \
   src/display_ui.c \
   src/frame_timing.c src/lcd_timing.c src/lcd_transfer.c src/lcd_bounce.c \
