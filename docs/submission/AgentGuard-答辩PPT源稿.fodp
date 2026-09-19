@@ -20,7 +20,7 @@
     <office:presentation>
       <draw:page draw:name="01-title" draw:style-name="dp1" draw:master-page-name="Default">
         <draw:frame draw:style-name="gText" svg:x="2.1cm" svg:y="4.6cm" svg:width="29.5cm" svg:height="4.5cm"><draw:text-box><text:p text:style-name="PTitle">AgentGuard</text:p><text:p text:style-name="PSub">基于 openvela + ESP-DL 的桌面健康与隐私守护终端</text:p><text:p text:style-name="PBody">端侧人数感知 · 久坐提醒 · 自动隐私遮罩 · 事件统计</text:p></draw:text-box></draw:frame>
-        <draw:frame draw:style-name="gText" svg:x="2.1cm" svg:y="14.6cm" svg:width="29.5cm" svg:height="2cm"><draw:text-box><text:p text:style-name="PSmall">2026 首届 openvela AI 硬件开发者大赛｜AI 硬件产品创新</text:p><text:p text:style-name="PSmall">【待填写：正式队伍名称 / 成员真实姓名】</text:p></draw:text-box></draw:frame>
+        <draw:frame draw:style-name="gText" svg:x="2.1cm" svg:y="14.6cm" svg:width="29.5cm" svg:height="2cm"><draw:text-box><text:p text:style-name="PSmall">2026 首届 openvela AI 硬件开发者大赛｜AI 硬件产品创新</text:p><text:p text:style-name="PSmall">魔魔胡胡胡萝卜队｜队长：闫贺翔｜其他成员：无</text:p></draw:text-box></draw:frame>
       </draw:page>
 
       <draw:page draw:name="02-problem" draw:style-name="dp1" draw:master-page-name="Default">
@@ -62,7 +62,7 @@
         <draw:frame draw:style-name="gText" svg:x="1.6cm" svg:y="1.1cm" svg:width="30.6cm" svg:height="1.5cm"><draw:text-box><text:p text:style-name="PTitle">05 工程证据与可靠性边界</text:p></draw:text-box></draw:frame>
         <draw:frame draw:style-name="gCard" svg:x="1.8cm" svg:y="4cm" svg:width="9.3cm" svg:height="9.8cm"><draw:text-box><text:p text:style-name="PMetric">22</text:p><text:p text:style-name="PHead">电脑端自动化测试</text:p><text:p text:style-name="PBody">代理、USB 启动、事件统计、Dashboard 和 Demo 启动器测试通过。</text:p></draw:text-box></draw:frame>
         <draw:frame draw:style-name="gCard" svg:x="12.3cm" svg:y="4cm" svg:width="9.3cm" svg:height="9.8cm"><draw:text-box><text:p text:style-name="PMetric">2,414,780 B</text:p><text:p text:style-name="PHead">最终固件</text:p><text:p text:style-name="PBody">小于 0x300000 分区限制；刷写时 Flash 哈希验证通过。</text:p><text:p text:style-name="PSmall">SHA-256: fbf3dbe8…0b27ddf</text:p></draw:text-box></draw:frame>
-        <draw:frame draw:style-name="gCard" svg:x="22.8cm" svg:y="4cm" svg:width="9.3cm" svg:height="9.8cm"><draw:text-box><text:p text:style-name="PMetric">16 / 2,229</text:p><text:p text:style-name="PHead">AI 会话 / 事件</text:p><text:p text:style-name="PBody">2,421,811 Token；官方日志校验器 ALL OK；沉淀 1 个可复用 Coding Skill。</text:p></draw:text-box></draw:frame>
+        <draw:frame draw:style-name="gCard" svg:x="22.8cm" svg:y="4cm" svg:width="9.3cm" svg:height="9.8cm"><draw:text-box><text:p text:style-name="PMetric">15 / 1,820</text:p><text:p text:style-name="PHead">AI 会话 / 事件</text:p><text:p text:style-name="PBody">1,992,096 Token；官方日志校验器 ALL OK；沉淀 1 个可复用 Coding Skill。</text:p></draw:text-box></draw:frame>
         <draw:frame draw:style-name="gText" svg:x="2cm" svg:y="15.5cm" svg:width="29.5cm" svg:height="1.3cm"><draw:text-box><text:p text:style-name="PSmall">真实性边界：未使用标准数据集测量精确率/召回率，未宣称主人识别、KWS、手势、功耗或长稳数据。</text:p></draw:text-box></draw:frame>
       </draw:page>
 
@@ -74,7 +74,7 @@
 
       <draw:page draw:name="08-end" draw:style-name="dp1" draw:master-page-name="Default">
         <draw:frame draw:style-name="gText" svg:x="2.2cm" svg:y="5.3cm" svg:width="29.5cm" svg:height="5cm"><draw:text-box><text:p text:style-name="PTitle">让桌面终端看得见风险，</text:p><text:p text:style-name="PTitle">但不让摄像头画面离开设备。</text:p><text:p text:style-name="PSub">AgentGuard · openvela + ESP-DL</text:p></draw:text-box></draw:frame>
-        <draw:frame draw:style-name="gText" svg:x="2.2cm" svg:y="14.8cm" svg:width="29.5cm" svg:height="1.5cm"><draw:text-box><text:p text:style-name="PSmall">代码仓库：https://github.com/open-vela/contest2026_123_momohuhuhuluobudui</text:p><text:p text:style-name="PSmall">【待填写：正式队伍名称 / 成员真实姓名】</text:p></draw:text-box></draw:frame>
+        <draw:frame draw:style-name="gText" svg:x="2.2cm" svg:y="14.8cm" svg:width="29.5cm" svg:height="1.5cm"><draw:text-box><text:p text:style-name="PSmall">代码仓库：https://github.com/open-vela/contest2026_123_momohuhuhuluobudui</text:p><text:p text:style-name="PSmall">魔魔胡胡胡萝卜队｜队长：闫贺翔｜其他成员：无</text:p></draw:text-box></draw:frame>
       </draw:page>
     </office:presentation>
   </office:body>

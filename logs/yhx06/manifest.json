@@ -172,18 +172,6 @@
       "model": "mimo-v2.5-pro"
     },
     {
-      "session_id": "23f80624-4f3a-4572-9542-fe0bfffb5211",
-      "tool": "claude-code",
-      "started_at": "2026-07-15T02:57:32.229Z",
-      "last_event_at": "2026-07-15T04:57:21.378Z",
-      "event_count": 409,
-      "raw_event_count": 561,
-      "file_path": "logs/yhx06/2026-07-15/claude-code__23f80624-4f3a-4572-9542-fe0bfffb5211.jsonl",
-      "collection_mode": "cli",
-      "health": "ok",
-      "model": "mimo-v2.5-pro"
-    },
-    {
       "session_id": "80a98738-1888-4975-80c0-f56f8c70f50d",
       "tool": "claude-code",
       "started_at": "2026-08-12T09:23:03.691Z",

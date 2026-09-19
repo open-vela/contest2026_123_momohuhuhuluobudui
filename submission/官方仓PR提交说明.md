@@ -68,7 +68,7 @@ feat: submit AgentGuard desktop health and privacy guardian
 - flash data hash verified
 - empty/single/double-face states physically verified
 - privacy FACE:2 → LED double flash → PC full-screen shield verified
-- AI logs: 16 files, 2,229 events, official validator ALL OK
+- AI logs: 15 files, 1,820 events, official validator ALL OK
 
 ## Scope
 

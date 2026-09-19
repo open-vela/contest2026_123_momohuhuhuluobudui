@@ -26,7 +26,7 @@
   <rect x="70" y="62" width="12" height="124" rx="6" fill="url(#accent)"/>
   <text x="112" y="125" class="cn title">AgentGuard</text>
   <text x="112" y="172" class="cn subtitle">基于 openvela + ESP-DL 的桌面健康与隐私守护终端</text>
-  <text x="1220" y="145" class="cn small">【待填写：队伍名称 / 成员姓名】</text>
+  <text x="1220" y="145" class="cn small">魔魔胡胡胡萝卜队 / 闫贺翔</text>
 
   <rect x="70" y="225" width="460" height="260" rx="24" fill="#102f40" stroke="#285267" stroke-width="2"/>
   <text x="104" y="275" class="cn section">解决什么问题</text>
