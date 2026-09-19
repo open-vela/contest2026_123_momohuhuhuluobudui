@@ -18,23 +18,23 @@
 
 1. 按脚本实拍并导出 `AgentGuard-演示视频.mp4`，总时长不超过 5 分钟。
 2. 将硬件照片放入 `photos/`，至少包含清单中的 6 张。
-3. 在 `参赛信息填写稿.md`、报告、海报和 PPT 中填写正式队名及真实姓名。
+3. 公开材料已填写队名和姓名；手机、邮箱、学校和参赛者类别仅保存在 `submission/private/`，在比赛平台填写，不提交 GitHub。
 4. 如补测两小时稳定性或功耗，将结果同步到 Markdown、DOCX 和 PDF。
-5. 将最终功能分支通过 PR 合入 open-vela 官方专属仓的 `dev-ai-contest-2026`。
+5. 核心功能 PR #2 和摄像头修复 PR #3 已合并；将本次身份材料更新 PR 合入 open-vela 官方专属仓的 `dev-ai-contest-2026`。
 
 ## 最终压缩包
 
 建议名称：
 
 ```text
-<报名队伍名称>-AgentGuard-contest2026_123_momohuhuhuluobudui.zip
+魔魔胡胡胡萝卜队-AgentGuard-contest2026_123_momohuhuhuluobudui.zip
 ```
 
 先将视频命名为 `AgentGuard-演示视频.mp4`（或 `.mov`），并把至少 6 张照片放入 `photos/`，然后执行：
 
 ```bash
 python3 tools/build_submission_package.py \
-  --team-name '报名时登记的正式队伍名称'
+  --team-name '魔魔胡胡胡萝卜队'
 ```
 
 工具只会打包技术报告、演示视频、照片、海报和答辩 PPT；材料不全时拒绝生成 ZIP。生成后仍须人工完整播放视频，确认时长不超过 5 分钟。
