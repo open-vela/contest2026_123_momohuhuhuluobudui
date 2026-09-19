@@ -246,6 +246,7 @@ test: $(TARGETS)
 	python3 test_espdl_tie_no_stdio.py
 	python3 test_lcd_dma_config.py
 	python3 test_camera_orientation.py
+	python3 test_camera_vsync_stability.py
 
 clean:
 	$(RM) $(TARGETS)
