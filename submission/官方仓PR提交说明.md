@@ -6,8 +6,8 @@
 - 状态：Open，非 Draft
 - 目标分支：`dev-ai-contest-2026`
 - 来源分支：`yhx06:feature/ai-error-safe-state`
-- 最新提交：`514ab50`
-- GitHub 合并状态：`mergeable: true`、`mergeable_state: clean`
+- 最新提交：自动跟踪 `feature/ai-error-safe-state` 当前 HEAD
+- GitHub 合并状态：`mergeable: true`；当前 `mergeable_state: unstable`，待所需 Review
 - `cla / cla-check`：Success
 
 不要重复创建 PR。直接打开 PR #1，完成 Review 并合入。
