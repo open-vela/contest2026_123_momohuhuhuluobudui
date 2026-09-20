@@ -130,7 +130,6 @@ python3 -m unittest -v test_agentguard_pc.py test_run_usb.py \
 - [提交检查清单](docs/submission/提交检查清单.md)
 - [5 分钟演示视频脚本](docs/submission/演示视频脚本.md)
 - [官网要求核对](docs/submission/官网要求核对.md)
-- [最终提交材料目录](submission/README.md)
 
 ## AI Coding 说明
 
