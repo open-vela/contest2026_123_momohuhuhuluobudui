@@ -1,13 +1,11 @@
 # AgentGuard 官网提交材料源稿目录
 
-本目录只在 GitHub 保存官网材料的文字源稿、拍摄清单和打包说明。技术报告
-PDF/DOCX、视频、照片、海报和答辩 PPT 属于官网 ZIP，不提交到 GitHub；源码、
+本目录只在 GitHub 保存官网材料的填写/拍摄清单和打包说明。技术报告及其源稿、
+视频、照片、海报和答辩 PPT 及其源稿属于官网材料，不提交到 GitHub；源码、
 README、Skill 和 AI Coding 日志则只进入赛事专属仓，不重复放入 ZIP。
 
 ## 仓库中保留
 
-- `../docs/submission/技术报告.md`：严格按官方模板 1、2、3.1–3.7 编写的报告源稿。
-- `../docs/submission/AgentGuard-答辩PPT源稿.fodp`：可重新导出的 PPT 源稿。
 - `参赛信息填写稿.md`：官网表单和报告中需要人工填写的信息汇总。
 - `视频拍摄清单.md`：≤5 分钟必交视频的逐镜头清单和 monitor 启动命令。
 - `../docs/submission/演示视频脚本.md`：视频旁白与镜头安排的原始脚本。
@@ -42,11 +40,11 @@ python3 tools/build_submission_package.py \
 
 ## 报告重新生成
 
-修改 `docs/submission/技术报告.md` 后，指定仓库外的本地“提交材料”目录再执行：
+技术报告源稿保存在仓库外的本地“提交材料”目录。修改后可执行：
 
 ```bash
 python3 tools/render_submission_report.py \
-  docs/submission/技术报告.md /tmp/AgentGuard-技术报告.html
+  /path/to/提交材料/AgentGuard-技术报告源稿.md /tmp/AgentGuard-技术报告.html
 libreoffice --headless --infilter='HTML (StarWriter)' \
   --convert-to odt --outdir /tmp /tmp/AgentGuard-技术报告.html
 libreoffice --headless --convert-to 'docx:Office Open XML Text' \
