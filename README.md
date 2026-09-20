@@ -40,7 +40,7 @@ flowchart LR
 - `tools/`：配置和构建辅助脚本。
 - `skills/`：开发期 AgentGuard 自定义 Coding Skill。
 - `docs/submission/`：技术报告初稿、提交检查清单和演示视频脚本。
-- `logs/`：需要在截止前导出的 AI Coding 对话日志。
+- `logs/`：已导出的 Claude Code 与 Codex AI Coding 对话日志及 manifest。
 
 ## 编译与烧录
 
@@ -135,6 +135,6 @@ python3 -m unittest -v test_agentguard_pc.py test_run_usb.py \
 
 ## AI Coding 说明
 
-本项目使用 AI 辅助完成需求裁剪、ESP-DL/NuttX 适配、故障诊断、测试设计、电脑代理和文档整理。开发过程始终以实机输出和自动化测试复核建议，完整对话需要按大赛要求导出至 `logs/`。仓库中的 `skills/develop-agentguard-openvela/` 是开发期 Coding Skill，并非部署在开发板 `/data/agent/skills/` 下的 LLM 运行时 Skill；本作品的核心 AI 能力是板端 ESP-DL 视觉推理。
+本项目使用 AI 辅助完成需求裁剪、ESP-DL/NuttX 适配、故障诊断、测试设计、电脑代理和文档整理。开发过程始终以实机输出和自动化测试复核建议。`logs/yhx06/` 已归档 37 个 Claude Code/Codex 会话、10,970 条事件，并通过赛事官方日志校验器；Codex 原始会话经 `tools/import_codex_logs.py` 转换和隐私脱敏后入库，原始会话文件不提交。仓库中的 `skills/develop-agentguard-openvela/` 是开发期 Coding Skill，并非部署在开发板 `/data/agent/skills/` 下的 LLM 运行时 Skill；本作品的核心 AI 能力是板端 ESP-DL 视觉推理。
 
 第三方 ESP-DL 代码及许可见 `app/agentguard/third_party/esp-dl/`。
