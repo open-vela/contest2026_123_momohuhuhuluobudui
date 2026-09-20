@@ -39,7 +39,7 @@ flowchart LR
 - `monitor/`：电脑端 USB/HTTP 代理、JSONL 日志与统计工具。
 - `tools/`：配置和构建辅助脚本。
 - `skills/`：开发期 AgentGuard 自定义 Coding Skill。
-- `docs/submission/`：技术报告初稿、提交检查清单和演示视频脚本。
+- `docs/submission/`：提交检查清单、官网要求核对和演示视频脚本；报告/PPT 成品及源稿不进入仓库。
 - `logs/`：已导出的 Claude Code 与 Codex AI Coding 对话日志及 manifest。
 
 ## 编译与烧录
@@ -127,7 +127,6 @@ python3 -m unittest -v test_agentguard_pc.py test_run_usb.py \
 
 ## 提交材料
 
-- [技术报告初稿](docs/submission/技术报告.md)
 - [提交检查清单](docs/submission/提交检查清单.md)
 - [5 分钟演示视频脚本](docs/submission/演示视频脚本.md)
 - [官网要求核对](docs/submission/官网要求核对.md)

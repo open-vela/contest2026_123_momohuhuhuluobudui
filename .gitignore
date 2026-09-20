@@ -35,6 +35,8 @@ __pycache__/
 /submission/*.pdf
 /submission/*.pptx
 /submission/photos/
+/docs/submission/技术报告.md
+/docs/submission/AgentGuard-答辩PPT源稿.fodp
 *.mp4
 *.mov
 /.worktrees/
