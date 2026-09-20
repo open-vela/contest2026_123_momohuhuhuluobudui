@@ -1,32 +1,29 @@
-# 官方专属仓 PR #1 合并说明
+# 官方专属仓最终日志与文档 PR 说明
 
-## 当前状态（2026-09-19 核对）
+## 当前状态（2026-09-20 核对）
 
-- PR：https://github.com/open-vela/contest2026_123_momohuhuhuluobudui/pull/1
-- 状态：Open，非 Draft
+- 核心功能、摄像头修复和首轮隐私文档已合入官方分支。
 - 目标分支：`dev-ai-contest-2026`
-- 来源分支：`yhx06:feature/ai-error-safe-state`
-- 最新提交：自动跟踪 `feature/ai-error-safe-state` 当前 HEAD
-- GitHub 合并状态：`mergeable: true`；当前 `mergeable_state: unstable`，待所需 Review
-- `cla / cla-check`：Success
+- 本轮来源分支：`yhx06:docs/submission-privacy`
+- 本轮内容：补齐 Codex AI Coding 日志、同步最终统计与提交文档。
 
-不要重复创建 PR。直接打开 PR #1，完成 Review 并合入。
+推送后从 `docs/submission-privacy` 向官方 `dev-ai-contest-2026` 创建或更新 PR，完成 Review 并在截止前合入。
 
 当前最终代码和 AI Coding 日志位于个人 Fork：
 
 - 仓库：`https://github.com/yhx06/contest2026_123_momohuhuhuluobudui`
-- 分支：`feature/ai-error-safe-state`
+- 分支：`docs/submission-privacy`
 
 比赛要求最终内容通过 PR 合入：
 
 - 仓库：`https://github.com/open-vela/contest2026_123_momohuhuhuluobudui`
 - 目标分支：`dev-ai-contest-2026`
 
-## 若 PR #1 页面无法打开
+## 创建或打开本轮 PR
 
 浏览器打开：
 
-https://github.com/open-vela/contest2026_123_momohuhuhuluobudui/compare/dev-ai-contest-2026...yhx06:feature/ai-error-safe-state?expand=1
+https://github.com/open-vela/contest2026_123_momohuhuhuluobudui/compare/dev-ai-contest-2026...yhx06:docs/submission-privacy?expand=1
 
 确认页面顶部显示：
 
@@ -34,13 +31,13 @@ https://github.com/open-vela/contest2026_123_momohuhuhuluobudui/compare/dev-ai-c
 base repository: open-vela/contest2026_123_momohuhuhuluobudui
 base: dev-ai-contest-2026
 head repository: yhx06/contest2026_123_momohuhuhuluobudui
-compare: feature/ai-error-safe-state
+compare: docs/submission-privacy
 ```
 
-## 建议把 PR 标题改为
+## 建议 PR 标题
 
 ```text
-feat: submit AgentGuard desktop health and privacy guardian
+docs: complete AgentGuard AI logs and submission statistics
 ```
 
 ## 建议把 PR 正文改为
@@ -68,7 +65,7 @@ feat: submit AgentGuard desktop health and privacy guardian
 - flash data hash verified
 - empty/single/double-face states physically verified
 - privacy FACE:2 → LED double flash → PC full-screen shield verified
-- AI logs: 15 files, 1,820 events, official validator ALL OK
+- AI logs: 37 files, 10,970 events, official validator ALL OK
 
 ## Scope
 
